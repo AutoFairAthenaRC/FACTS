@@ -284,18 +284,36 @@ def optimize(SD: List[Predicate], RL: List[Predicate], X_aff: DataFrame, model: 
                         raise IndexError("Something went wrong. Reference count negative.")
         
         # try exchange
-#        for idx1 in my_subset:
-#            for idx2 in excluded:
-#                cand_subset = (my_subset | {idx2}) - {idx1}
-#                new_score = sum(almost_all[i] for i in cand_subset) + len(set().union(*[triples_covers[i] for i in cand_subset]))
-#                if new_score > curr_score:
-#                    curr_score = new_score
-#                    my_subset.add(idx2)
-#                    my_subset.remove(idx1)
-#                    excluded.add(idx1)
-#                    excluded.remove(idx2)
-#                    flag_continue = False
-#                    break
+        for idx1 in my_subset:
+            for idx2 in excluded:
+                updated_modular = curr_modular + almost_all[idx2] - almost_all[idx1]
+                updated_cover = curr_cover
+                for j in triples_covers[idx1]:
+                    ref_counts[j] -= 1
+                    if ref_counts[j] < 0:
+                        raise IndexError("Something went wrong. Reference count negative.")
+                    elif ref_counts[j] == 0:
+                        updated_cover -= 1
+                for j in triples_covers[idx2]:
+                    ref_counts[j] += 1
+                    if ref_counts[j] == 1:
+                        updated_cover += 1
+                if updated_modular + updated_cover > curr_modular + curr_cover:
+                    curr_modular = updated_modular
+                    curr_cover = updated_cover
+                    my_subset.add(idx2)
+                    my_subset.remove(idx1)
+                    excluded.remove(idx2)
+                    excluded.add(idx1)
+                    flag_continue = True
+                    break
+                else:
+                    for j in triples_covers[idx2]:
+                        ref_counts[j] -= 1
+                        if ref_counts[j] < 0:
+                            raise IndexError("Something went wrong. Reference count negative.")
+                    for j in triples_covers[idx1]:
+                        ref_counts[j] += 1
     
     final_incorrects = sum([all_incorrects[i] for i in my_subset])
     final_coverage = len(set().union(*[triples_covers[i] for i in my_subset]))
