@@ -5,15 +5,19 @@ from lib import Predicate
 from mlxtend.preprocessing import TransactionEncoder
 from mlxtend.frequent_patterns import apriori, fpgrowth, association_rules
 
-def aprioriout2predicateList(apriori_out: DataFrame, data: DataFrame) -> List[Predicate]:
-    value2featureMap = {}
-    for feature in data.columns:
-        for value in data[feature].unique():
-            value2featureMap[value] = feature
-    
+def preprocessDataset(data: DataFrame) -> DataFrame:
+    d = data.copy()
+    for col in d:
+        d[col] = d[col] + "+" + col
+    return d
+
+def aprioriout2predicateList(apriori_out: DataFrame) -> List[Predicate]:
     predicate_set = []
     for itemset in apriori_out["itemsets"].to_numpy():
-        pred = {value2featureMap[item]: item for item in itemset}
+        pred = dict()
+        for item in itemset:
+            value, feature = item.split("+")
+            pred[feature] = value
         pred = Predicate.from_dict_categorical(pred)
         predicate_set.append(pred)
     
