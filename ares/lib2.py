@@ -16,8 +16,6 @@ from pandas import DataFrame
 from pprint import pprint
 
 ##### Parameters
-# CLASS1 = "MALE"
-# CLASS2 = "FEMALE"
 epsilon1 = 20
 epsilon2 = 7
 epsilon3 = 10
