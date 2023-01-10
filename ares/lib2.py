@@ -87,8 +87,8 @@ class RecourseSet:
     @staticmethod
     def fromList(l: List[Tuple[Dict[str,str], Dict[str, str]]]):
         R = RecourseSet()
-        hs = [Predicate.from_dict_categorical(rule[0]) for rule in l]
-        ss = [Predicate.from_dict_categorical(rule[1]) for rule in l]
+        hs = [Predicate.from_dict(rule[0]) for rule in l]
+        ss = [Predicate.from_dict(rule[1]) for rule in l]
         R.hypotheses = hs
         R.suggestions = ss
         return R
@@ -117,9 +117,6 @@ class TwoLevelRecourseSet:
     def suggest(self, x):
         x_belongs_to = x[self.feature]
         return self.rules[x_belongs_to].suggest(x)
-    
-    def addRule(self, subgroup: str, h: Predicate, s: Predicate):
-        self.rules[subgroup].addRecourse(h, s)
 
 class ModelAPI(Protocol):
     def predict(self, X: ArrayLike) -> ArrayLike:
