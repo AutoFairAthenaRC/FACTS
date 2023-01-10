@@ -17,6 +17,11 @@ featureCosts = defaultdict(lambda: 1)
 def default_cost(v1, v2):
     return 0 if v1 == v2 else 1
 featureChanges = defaultdict(lambda: default_cost)
+
+lambda_cover = 1
+lambda_correctness = 1
+lambda_featureCost = 1
+lambda_featureChange = 2
 ##### Parameters
 
 ##### Utility functions for setting the parameters
@@ -26,6 +31,13 @@ def setFeatureCost(fc: Dict):
 def setFeatureChange(fc: Dict):
     global featureChanges
     featureChanges.update(fc)
+
+def set_lambdas(l1=1, l2=1, l3=1, l4=1):
+    global lambda_cover, lambda_correctness, lambda_featureCost, lambda_featureChange
+    lambda_cover = l1
+    lambda_correctness = l2
+    lambda_featureCost = l3
+    lambda_featureChange = l4
 ##### Utility functions for setting the parameters
 
 ##### Unused parameters
@@ -238,8 +250,63 @@ def optimizer(modulars: List[int], covers: List[Set[int]], N_aff: int):
             else:
                 for j in covers[idx]:
                     ref_counts[j] += 1
-    raise NotImplementedError
+        
+        # try add
+        for idx in excluded:
+            updated_modular = curr_modular + modulars[idx]
+            updated_cover = curr_cover
+            for obj in covers[idx]:
+                ref_counts[obj] += 1
+                if ref_counts[obj] == 1:
+                    updated_cover += 1
+            
+            if updated_modular + updated_cover > curr_modular + curr_cover:
+                curr_modular = updated_modular
+                curr_cover = updated_cover
+                subset.add(idx)
+                excluded.remove(idx)
+                flag_continue = True
+                break
+            else:
+                for j in covers[idx]:
+                    ref_counts[j] -= 1
+                    if ref_counts[j] < 0:
+                        raise IndexError("Something went wrong. Reference count negative.")
 
+        # try exchange
+        for idx1 in subset:
+            for idx2 in excluded:
+                updated_modular = curr_modular - modulars[idx1] + modulars[idx2]
+                updated_cover = curr_cover
+                for obj in covers[idx1]:
+                    ref_counts[obj] -= 1
+                    if ref_counts[obj] < 0:
+                        raise IndexError("Something went wrong. Reference count negative.")
+                    elif ref_counts[obj] == 0:
+                        updated_cover -= 1
+                for obj in covers[idx2]:
+                    ref_counts[obj] += 1
+                    if ref_counts[obj] == 1:
+                        updated_cover += 1
+                
+                if updated_modular + updated_cover > curr_modular + curr_cover:
+                    curr_modular = updated_modular
+                    curr_cover = updated_cover
+                    subset.remove(idx1)
+                    excluded.add(idx1)
+                    subset.add(idx2)
+                    excluded.remove(idx2)
+                    flag_continue = True
+                    break
+                else:
+                    for j in covers[idx2]:
+                        ref_counts[j] -= 1
+                        if ref_counts[j] < 0:
+                            raise IndexError("Something went wrong. Reference count negative.")
+                    for j in covers[idx1]:
+                        ref_counts[j] += 1
+
+    return subset
 
 
 def optimize(SD: List[Predicate], RL: List[Predicate], X_aff: DataFrame, model: ModelAPI) -> Tuple[List[Tuple[Predicate, Predicate, Predicate]], int, int, int, int]:
@@ -364,4 +431,8 @@ def optimize(SD: List[Predicate], RL: List[Predicate], X_aff: DataFrame, model: 
     final_feature_change = sum([all_feature_changes[i] for i in my_subset])
     return [all_triples[i] for i in my_subset], final_incorrects, final_coverage, final_feature_cost, final_feature_change
 
+def split_dataset(X: DataFrame, attr: str):
+    vals = X[attr].unique()
+    grouping = X.groupby(attr)
+    return {val: grouping.get_group(val) for val in vals}
 
