@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, TypeVar, List, Dict, Tuple, Protocol
+from typing import Any, Set, List, Dict, Tuple, Protocol
 import operator
 from collections import defaultdict
 import itertools
@@ -83,8 +83,6 @@ def recIsValid(p1: Predicate, p2: Predicate) -> bool:
 class RecourseSet:
     hypotheses: List[Predicate] = field(default_factory=list)
     suggestions: List[Predicate] = field(default_factory=list)
-    _deleted_h: Predicate = field(default_factory=Predicate)
-    _deleted_s: Predicate = field(default_factory=Predicate)
 
     @staticmethod
     def fromList(l: List[Tuple[Dict[str,str], Dict[str, str]]]):
@@ -106,18 +104,6 @@ class RecourseSet:
         for h, s in zip(self.hypotheses, self.suggestions):
             if h.satisfies(x):
                 yield s
-    
-    def addRecourse(self, h: Predicate, s: Predicate):
-        self.hypotheses.append(h)
-        self.suggestions.append(s)
-    
-    def deleteRecourse(self):
-        self._deleted_h = self.hypotheses.pop()
-        self._deleted_s = self.suggestions.pop()
-    
-    def undoDelete(self):
-        self.hypotheses.append(self._deleted_h)
-        self.suggestions.append(self._deleted_s)
 
 @dataclass
 class TwoLevelRecourseSet:
@@ -196,6 +182,50 @@ def reward4(R: TwoLevelRecourseSet) -> float:
     U_4 = M_max * epsilon1 * epsilon2
     return U_4 - featureChange(R)
 
+def optimizer(modulars: List[int], covers: List[Set[int]], N_aff: int):
+    assert len(modulars) == len(covers)
+
+    N = len(modulars)
+    singleton_rewards = [mod + len(cov) for mod, cov in zip(modulars, covers)]
+
+    argmax_singleton = np.argmax(singleton_rewards)
+    subset = set([argmax_singleton])
+    excluded = set(np.arange(N))
+    excluded.remove(argmax_singleton)
+
+    curr_modular = modulars[argmax_singleton]
+    curr_cover = len(covers[argmax_singleton])
+    ref_counts = [0] * N_aff
+    for idx in covers[argmax_singleton]:
+        ref_counts[idx] += 1
+    
+    flag_continue = True
+    while flag_continue:
+        flag_continue = False
+
+        # try delete
+        for idx in subset:
+            updated_modular = curr_modular - modulars[idx]
+            updated_cover = curr_cover
+            for obj in covers[idx]:
+                ref_counts[obj] -= 1
+                if ref_counts[obj] < 0:
+                    raise IndexError("Something went wrong. Reference count negative.")
+                elif ref_counts[obj] == 0:
+                    updated_cover -= 1
+            
+            if updated_modular + updated_cover > curr_modular + curr_cover:
+                curr_modular = updated_modular
+                curr_cover = updated_cover
+                subset.remove(idx)
+                excluded.add(idx)
+                flag_continue = True
+                break
+            else:
+                for j in covers[idx]:
+                    ref_counts[j] += 1
+    raise NotImplementedError
+
 
 
 def optimize(SD: List[Predicate], RL: List[Predicate], X_aff: DataFrame, model: ModelAPI) -> Tuple[List[Tuple[Predicate, Predicate, Predicate]], int, int, int, int]:
@@ -234,7 +264,7 @@ def optimize(SD: List[Predicate], RL: List[Predicate], X_aff: DataFrame, model: 
     my_subset = set([argmax_total])
     excluded = set(np.array([i for i in range(triples_no) if i != argmax_total]))
     curr_modular = almost_all[argmax_total]
-    curr_cover = all_single[argmax_total]
+    curr_cover = len(triples_covers[argmax_total])
     for j in triples_covers[argmax_total]:
         ref_counts[j] += 1
     flag_continue = True

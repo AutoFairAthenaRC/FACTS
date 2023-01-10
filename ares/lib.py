@@ -88,8 +88,6 @@ def recIsValid(p1: Predicate, p2: Predicate) -> bool:
 class RecourseSet:
     hypotheses: List[Predicate] = field(default_factory=list)
     suggestions: List[Predicate] = field(default_factory=list)
-    _deleted_h: Predicate = field(default_factory=Predicate)
-    _deleted_s: Predicate = field(default_factory=Predicate)
 
     @staticmethod
     def fromList(l: List[Tuple[Dict[str,str], Dict[str, str]]]):
@@ -111,18 +109,6 @@ class RecourseSet:
         for h, s in zip(self.hypotheses, self.suggestions):
             if h.satisfies(x):
                 yield s
-    
-    def addRecourse(self, h: Predicate, s: Predicate):
-        self.hypotheses.append(h)
-        self.suggestions.append(s)
-    
-    def deleteRecourse(self):
-        self._deleted_h = self.hypotheses.pop()
-        self._deleted_s = self.suggestions.pop()
-    
-    def undoDelete(self):
-        self.hypotheses.append(self._deleted_h)
-        self.suggestions.append(self._deleted_s)
 
 @dataclass
 class TwoLevelRecourseSet:
