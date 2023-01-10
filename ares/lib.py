@@ -122,9 +122,6 @@ class TwoLevelRecourseSet:
     def suggest(self, x):
         x_belongs_to = x[self.feature]
         return self.rules[x_belongs_to].suggest(x)
-    
-    def addRule(self, subgroup: str, h: Predicate, s: Predicate):
-        self.rules[subgroup].addRecourse(h, s)
 
 class ModelAPI(Protocol):
     def predict(self, X: ArrayLike) -> ArrayLike:

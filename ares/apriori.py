@@ -1,7 +1,7 @@
 from pandas import DataFrame
 from typing import List, Any
 from numpy.typing import NDArray
-from lib import Predicate
+from lib2 import Predicate
 from mlxtend.preprocessing import TransactionEncoder
 from mlxtend.frequent_patterns import apriori, fpgrowth, association_rules
 
@@ -14,11 +14,9 @@ def preprocessDataset(data: DataFrame) -> DataFrame:
 def aprioriout2predicateList(apriori_out: DataFrame) -> List[Predicate]:
     predicate_set = []
     for itemset in apriori_out["itemsets"].to_numpy():
-        pred = dict()
-        for item in itemset:
-            value, feature = item.split("+")
-            pred[feature] = value
-        pred = Predicate.from_dict_categorical(pred)
+        feature_value_splits = map(lambda item: item.split("+"), list(itemset))
+        pred = {feature: value for value, feature in feature_value_splits}
+        pred = Predicate.from_dict(pred)
         predicate_set.append(pred)
     
     return predicate_set

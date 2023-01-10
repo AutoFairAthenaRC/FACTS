@@ -47,7 +47,7 @@ class Predicate:
     operators: List[Operator] = field(default_factory=list, repr=False)
 
     @staticmethod
-    def from_dict_categorical(d: Dict[str, str]) -> "Predicate":
+    def from_dict(d: Dict[str, str]) -> "Predicate":
         p = Predicate()
         p.features = list(d.keys())
         p.values = list(d.values())

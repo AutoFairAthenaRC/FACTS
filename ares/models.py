@@ -4,8 +4,6 @@ import sklearn as sk
 from typing import List, Optional
 
 from xgboost import XGBClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
 from omnixai.data.tabular import Tabular
 from omnixai.preprocessing.tabular import TabularTransform
 
@@ -14,29 +12,40 @@ class customXGB:
         self.clf = XGBClassifier(n_estimators=n_estimators, max_depth=max_depth)
         self.transformer = TabularTransform()
         self.cate_columns = []
-        self.target_column = "label"
-
-    def fit(self, data: pd.DataFrame, cate_columns: Optional[List[str]] = None, target_column: str = "label"):
+    
+    def reset(self, cate_columns: Optional[List[str]] = None, target_column: str = "label"):
         self.cate_columns = cate_columns if cate_columns is not None else []
         self.target_column = target_column
+    
+    def _sk2tab(self, X: pd.DataFrame, y: pd.Series) -> Tabular:
+        for_tabular = X.assign(**{self.target_column: y})
         tabular_data = Tabular(
-            data,
+            for_tabular,
             categorical_columns=self.cate_columns,
             target_column=self.target_column
         )
+        return tabular_data
+    
+    def _df2tab(self, X: pd.DataFrame) -> Tabular:
+        return Tabular(
+            X,
+            categorical_columns=self.cate_columns,
+        )
+    
+    def fit(self, X: pd.DataFrame, y: pd.Series, cate_columns: Optional[List[str]] = None, target_column: str = "label"):
+        self.reset(cate_columns=cate_columns, target_column=target_column)
+
+        tabular_data = self._sk2tab(X, y)
         self.transformer.fit(tabular_data)
         x = self.transformer.transform(tabular_data)
-        train, test, train_labels, test_labels = train_test_split(x[:, :-1], x[:, -1], train_size=.8)
+        train, train_labels = x[:, :-1], x[:, -1]
         self.clf.fit(train, train_labels)
         return self
-    
-    def predict(self, data: pd.DataFrame):
-        data_tab = Tabular(
-            data,
-            categorical_columns=self.cate_columns,
-            target_column=self.target_column
-        )
-        x = self.transformer.transform(data_tab)
-        return self.clf.predict(x[:, :-1])
-    
 
+    def predict(self, X: pd.DataFrame):
+        tabular_data = self._df2tab(X)
+        x = self.transformer.transform(tabular_data)
+        return self.clf.predict(x)
+    
+#    def accuracy(self, X, y: pd.Series) -> float:
+#        pass
