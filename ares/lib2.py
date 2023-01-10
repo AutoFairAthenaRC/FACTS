@@ -4,7 +4,6 @@ from typing import Any, Set, List, Dict, Tuple, Protocol
 import operator
 from collections import defaultdict
 import itertools
-from functools import partial
 
 import pandas as pd
 import numpy as np
@@ -13,16 +12,29 @@ from numpy.typing import ArrayLike
 from pandas.core.series import Series
 from pandas import DataFrame
 
-from pprint import pprint
-
 ##### Parameters
+featureCosts = defaultdict(lambda: 1)
+def default_cost(v1, v2):
+    return 0 if v1 == v2 else 1
+featureChanges = defaultdict(lambda: default_cost)
+##### Parameters
+
+##### Utility functions for setting the parameters
+def setFeatureCost(fc: Dict):
+    global featureCosts
+    featureCosts.update(fc)
+def setFeatureChange(fc: Dict):
+    global featureChanges
+    featureChanges.update(fc)
+##### Utility functions for setting the parameters
+
+##### Unused parameters
 epsilon1 = 20
 epsilon2 = 7
 epsilon3 = 10
-featureCosts = defaultdict(lambda: 1, {"Sex": 100})
-C_max = max(featureCosts.values())
+C_max = max(featureCosts.values(), default=1)
 M_max = 1
-##### Parameters
+##### Unused parameters
 
 class Operator(Enum):
     EQ = "="
@@ -66,7 +78,14 @@ def featureCostPred(p1: Predicate, p2: Predicate):
     return ret
 
 def featureChangePred(p1: Predicate, p2: Predicate):
-    return sum(v1 != v2 for v1, v2 in zip(p1.values, p2.values))
+    # return sum(featureChanges[feat](p1.values[i], p2.values[i]) for i, feat in enumerate(p1.features))
+    total = 0
+    for i, f in enumerate(p1.features):
+        val1 = p1.values[i]
+        val2 = p2.values[i]
+        costChange = featureChanges[f](val1, val2)
+        total += costChange
+    return total
 
 def recIsValid(p1: Predicate, p2: Predicate) -> bool:
     n1 = len(p1.features)
@@ -239,7 +258,6 @@ def optimize(SD: List[Predicate], RL: List[Predicate], X_aff: DataFrame, model: 
     
     # triples_covers: List[set] = [set() for i in range(triples_no)]
     triples_covers: List = [set() for i in range(triples_no)]
-    print(triples_covers[10])
     for i, (sd, h, s) in enumerate(all_triples):
         X_aff_covered = X_aff.apply(lambda x: h.satisfies(x) and sd.satisfies(x), axis=1).to_numpy()
         nonzeros = X_aff_covered.nonzero()
