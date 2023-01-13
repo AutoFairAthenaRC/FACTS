@@ -1,11 +1,15 @@
 import pandas as pd
-import numpy as np
-import sklearn as sk
-from typing import List, Optional
+from typing import List, Optional, Protocol
+
+from numpy.typing import ArrayLike
 
 from xgboost import XGBClassifier
 from omnixai.data.tabular import Tabular
 from omnixai.preprocessing.tabular import TabularTransform
+
+class ModelAPI(Protocol):
+    def predict(self, X: ArrayLike) -> ArrayLike:
+        ...
 
 class customXGB:
     def __init__(self, n_estimators=300, max_depth=5):
