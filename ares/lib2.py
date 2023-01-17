@@ -1,48 +1,18 @@
 from typing import Dict
 from collections import defaultdict
 
+import numpy as np
 from pandas import DataFrame
 
-##### Parameters
-featureCosts = defaultdict(lambda: 1)
-def default_cost(v1, v2):
-    return 0 if v1 == v2 else 1
-featureChanges = defaultdict(lambda: default_cost)
-
-lambda_cover = 1
-lambda_correctness = 1
-lambda_featureCost = 1
-lambda_featureChange = 2
-##### Parameters
-
-##### Utility functions for setting the parameters
-def setFeatureCost(fc: Dict):
-    global featureCosts
-    featureCosts.update(fc)
-def setFeatureChange(fc: Dict):
-    global featureChanges
-    featureChanges.update(fc)
-
-def set_lambdas(l1=1, l2=1, l3=1, l4=1):
-    global lambda_cover, lambda_correctness, lambda_featureCost, lambda_featureChange
-    lambda_cover = l1
-    lambda_correctness = l2
-    lambda_featureCost = l3
-    lambda_featureChange = l4
-##### Utility functions for setting the parameters
-
-##### Unused parameters
-epsilon1 = 20
-epsilon2 = 7
-epsilon3 = 10
-C_max = max(featureCosts.values(), default=1)
-M_max = 1
-##### Unused parameters
-
+from parameters import *
+from models import ModelAPI
+from apriori import runApriori, preprocessDataset, aprioriout2predicateList
+from recourse_sets import TwoLevelRecourseSet
 
 ## Re-exporting
 from optimization import optimize
 from predicate import Predicate
+## Re-exporting
 
 
 
@@ -50,4 +20,24 @@ def split_dataset(X: DataFrame, attr: str):
     vals = X[attr].unique()
     grouping = X.groupby(attr)
     return {val: grouping.get_group(val) for val in vals}
+
+def global_counterfactuals(X: DataFrame, model: ModelAPI, sensitive_attribute: str, subsample_size=400):
+    X_aff_idxs = np.where(model.predict(X) == 0)[0]
+    X_aff = X.iloc[X_aff_idxs, :]
+
+    d = X.drop([sensitive_attribute], axis=1)
+    freq_itemsets = runApriori(preprocessDataset(d), min_support=0.03)
+    freq_itemsets.reset_index()
+
+    RL = aprioriout2predicateList(freq_itemsets)
+
+    SD = list(map(Predicate.from_dict, [
+        {sensitive_attribute: val} for val in X[sensitive_attribute].unique()
+    ]))
+
+    ifthen_triples = np.random.choice(RL, subsample_size, replace=False) # type: ignore
+    affected_sample = X_aff.iloc[np.random.choice(X_aff.shape[0], size=subsample_size, replace=False), :]
+    final_rules = optimize(SD, ifthen_triples, affected_sample, model)
+
+    return TwoLevelRecourseSet.from_triples(final_rules[0])
 

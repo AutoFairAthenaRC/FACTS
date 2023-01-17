@@ -1,7 +1,7 @@
 from pandas import DataFrame
 from typing import List, Any
 from numpy.typing import NDArray
-from lib2 import Predicate
+from predicate import Predicate
 from mlxtend.preprocessing import TransactionEncoder
 from mlxtend.frequent_patterns import apriori, fpgrowth, association_rules
 

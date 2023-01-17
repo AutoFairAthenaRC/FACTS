@@ -13,7 +13,7 @@ def incorrectRecoursesSingle(sd: Predicate, h: Predicate, s: Predicate, X_aff: D
     if X_aff_covered.shape[0] == 0:
         return 0
 
-    X_aff_covered.loc[:, s.features] = s.values
+    X_aff_covered.loc[:, s.features] = s.values # type: ignore
     preds = model.predict(X_aff_covered)
     return np.shape(preds)[0] - np.sum(preds)
 
@@ -42,9 +42,6 @@ def incorrectRecoursesSubmodular(R: TwoLevelRecourseSet, X_aff: DataFrame, model
         X_copy.loc[:, s.features] = s.values # type: ignore
         all_preds = model.predict(X_copy)
         covered_and_corrected = np.logical_and(all_preds, X_aff_covered_indicator).nonzero()[0]
-
-        print(corrected & set(covered_and_corrected.tolist()))
-        print(covered & set(X_aff_covered_indicator.nonzero()[0].tolist()))
 
         covered.update(X_aff_covered_indicator.nonzero()[0].tolist())
         corrected.update(covered_and_corrected.tolist())
