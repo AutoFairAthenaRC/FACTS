@@ -9,7 +9,7 @@ featureChanges = defaultdict(lambda: default_cost)
 lambda_cover = 1
 lambda_correctness = 1
 lambda_featureCost = 1
-lambda_featureChange = 2
+lambda_featureChange = 1
 
 ##### Utility functions for setting the parameters
 def setFeatureCost(fc: Dict):

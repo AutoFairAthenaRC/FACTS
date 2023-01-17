@@ -1,9 +1,10 @@
 from pandas import DataFrame
-from typing import List, Any
-from numpy.typing import NDArray
-from predicate import Predicate
+from typing import List
+
 from mlxtend.preprocessing import TransactionEncoder
-from mlxtend.frequent_patterns import apriori, fpgrowth, association_rules
+from mlxtend.frequent_patterns import fpgrowth
+
+from predicate import Predicate
 
 def preprocessDataset(data: DataFrame) -> DataFrame:
     d = data.copy()

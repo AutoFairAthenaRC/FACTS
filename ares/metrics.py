@@ -1,3 +1,5 @@
+from typing import Union
+
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
@@ -17,7 +19,7 @@ def incorrectRecoursesSingle(sd: Predicate, h: Predicate, s: Predicate, X_aff: D
     preds = model.predict(X_aff_covered)
     return np.shape(preds)[0] - np.sum(preds)
 
-def incorrectRecourses(R: TwoLevelRecourseSet, X_aff: DataFrame, model: ModelAPI, percentage=False):
+def incorrectRecourses(R: TwoLevelRecourseSet, X_aff: DataFrame, model: ModelAPI) -> int:
     new_rows = []
     for _, x in X_aff.iterrows():
         for s in R.suggest(x):
@@ -26,13 +28,9 @@ def incorrectRecourses(R: TwoLevelRecourseSet, X_aff: DataFrame, model: ModelAPI
             new_rows.append(x_corrected.to_frame().T)
     X_changed = pd.concat(new_rows, ignore_index=True)
     preds = model.predict(X_changed)
-    ret = np.shape(preds)[0] - np.sum(preds)
-    if percentage:
-        return ret / X_aff.shape[0]
-    else:
-        return ret
+    return np.shape(preds)[0] - np.sum(preds)
 
-def incorrectRecoursesSubmodular(R: TwoLevelRecourseSet, X_aff: DataFrame, model: ModelAPI, percentage=False):
+def incorrectRecoursesSubmodular(R: TwoLevelRecourseSet, X_aff: DataFrame, model: ModelAPI) -> int:
     triples = R.to_triples()
     covered = set()
     corrected = set()
@@ -45,11 +43,7 @@ def incorrectRecoursesSubmodular(R: TwoLevelRecourseSet, X_aff: DataFrame, model
 
         covered.update(X_aff_covered_indicator.nonzero()[0].tolist())
         corrected.update(covered_and_corrected.tolist())
-    ret = len(covered - corrected)
-    if percentage:
-        return ret / X_aff.shape[0]
-    else:
-        return ret
+    return len(covered - corrected)
 
 def cover(R: TwoLevelRecourseSet, X_aff: DataFrame, percentage=False):
     suggestions = [list(R.suggest(x)) for _, x in X_aff.iterrows()]

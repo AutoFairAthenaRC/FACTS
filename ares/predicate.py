@@ -3,7 +3,7 @@ from typing import List, Any, Dict
 from enum import Enum
 import operator
 
-from lib2 import featureChanges, featureCosts
+from parameters import featureChanges, featureCosts
 
 class Operator(Enum):
     EQ = "="
@@ -24,6 +24,17 @@ class Predicate:
     values: List[Any] = field(default_factory=list)
     operators: List[Operator] = field(default_factory=list, repr=False)
 
+    def __str__(self) -> str:
+        ret = []
+        boo = True
+        for f, v in zip(self.features, self.values):
+            if boo:
+                ret.append(f"{f} = {v}")
+                boo = False
+                continue
+            ret.append(f", {f} = {v}")
+        return "".join(ret)
+    
     def __post_init__(self, operators=None):
         if operators is None:
             self.operators = [Operator.EQ for _ in range(len(self.features))]

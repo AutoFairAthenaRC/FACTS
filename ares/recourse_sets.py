@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Tuple
-from predicate import Predicate
 
 import numpy as np
 from pandas import Series
+
+from predicate import Predicate
 
 @dataclass
 class RecourseSet:
@@ -40,6 +41,15 @@ class TwoLevelRecourseSet:
     values: List[str]
     rules: Dict[str, RecourseSet] = field(default_factory=dict)
 
+    def __str__(self) -> str:
+        ret = []
+        for val in self.values:
+            ret.append(f"If {self.feature} = {val}:\n")
+            rules = self.rules[val]
+            for h, s in zip(rules.hypotheses, rules.suggestions):
+                ret.append(f"\tIf {h},\n\tThen {s}.\n")
+        return "".join(ret)
+    
     @staticmethod
     def from_triples(l: List[Tuple[Predicate, Predicate, Predicate]]):
         feat = l[0][0].features[0]
@@ -62,4 +72,7 @@ class TwoLevelRecourseSet:
     
     def suggest(self, x):
         x_belongs_to = x[self.feature]
-        return self.rules[x_belongs_to].suggest(x)
+        if x_belongs_to in self.rules:
+            return self.rules[x_belongs_to].suggest(x)
+        else:
+            return []
