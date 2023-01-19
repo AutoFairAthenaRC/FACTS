@@ -8,7 +8,7 @@ from recourse_sets import TwoLevelRecourseSet
 from metrics import cover, incorrectRecoursesSingle, incorrectRecoursesSubmodular
 
 ## Re-exporting
-from optimization import optimize
+from optimization import optimize_vanilla
 from predicate import Predicate
 ## Re-exporting
 
@@ -56,7 +56,7 @@ def global_counterfactuals(X: DataFrame, model: ModelAPI, sensitive_attribute: s
 
     ifthen_triples = np.random.choice(RL, subsample_size, replace=False) # type: ignore
     affected_sample = X_aff.iloc[np.random.choice(X_aff.shape[0], size=subsample_size, replace=False), :]
-    final_rules = optimize(SD, ifthen_triples, affected_sample, model)
+    final_rules = optimize_vanilla(SD, ifthen_triples, affected_sample, model)
 
     return TwoLevelRecourseSet.from_triples(final_rules[0])
 
