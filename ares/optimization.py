@@ -7,10 +7,11 @@ from pandas import DataFrame
 from predicate import Predicate, featureChangePred, featureCostPred, recIsValid
 from models import ModelAPI
 from metrics import incorrectRecoursesSingle
-from parameters import lambda_cover, lambda_correctness, lambda_featureChange, lambda_featureCost
+from parameters import ParameterProxy
 
-def optimizer(modulars: List[int], covers: List[Set[int]], N_aff: int, lcov=lambda_cover):
+def optimizer(modulars: List[int], covers: List[Set[int]], N_aff: int, params: ParameterProxy = ParameterProxy()):
     assert len(modulars) == len(covers)
+    lcov = params.lambda_cover
 
     N = len(modulars)
     singleton_rewards = [mod + lcov * len(cov) for mod, cov in zip(modulars, covers)]
@@ -109,29 +110,26 @@ def optimizer(modulars: List[int], covers: List[Set[int]], N_aff: int, lcov=lamb
 
     return subset
 
-def optimize(SD: List[Predicate], RL: List[Predicate], X_aff: DataFrame, model: ModelAPI) -> Tuple[List[Tuple[Predicate, Predicate, Predicate]], int, int, int, int]:
+def optimize_vanilla(SD: List[Predicate], RL: List[Predicate], X_aff: DataFrame, model: ModelAPI) -> Tuple[List[Tuple[Predicate, Predicate, Predicate]], int, int, int, int]:
     d = defaultdict(lambda: RL, {})
-    return _optimize(SD, d, d, X_aff, model)
+    return optimize(SD, d, d, X_aff, model)
 
-def _optimize(
+def optimize(
     SD: List[Predicate],
     ifs: Dict[str, List[Predicate]],
     thens: Dict[str, List[Predicate]],
     X_aff: DataFrame,
     model: ModelAPI,
-    lcov = lambda_cover,
-    lcor = lambda_correctness,
-    lcos = lambda_featureCost,
-    lch = lambda_featureChange
+    params: ParameterProxy = ParameterProxy()
 ) -> Tuple[List[Tuple[Predicate, Predicate, Predicate]], int, int, int, int]:
     all_triples = [(sd, h, s) for sd in SD for h in ifs[sd.values[0]] for s in thens[sd.values[0]] if recIsValid(h, s)]
     triples_no = len(all_triples)
     print(f"Total triples = {triples_no}")
-    all_incorrects = list(-lcor * incorrectRecoursesSingle(sd, h, s, X_aff, model) for sd, h, s in all_triples)
+    all_incorrects = list(-params.lambda_correctness * incorrectRecoursesSingle(sd, h, s, X_aff, model) for sd, h, s in all_triples)
     print("Calculated incorrect recourse for each triple")
-    all_feature_costs = list(-lcos * featureCostPred(h, s) for _, h, s in all_triples)
+    all_feature_costs = list(-params.lambda_featureCost * featureCostPred(h, s) for _, h, s in all_triples)
     print("Calculated feature costs for each triple")
-    all_feature_changes = list(-lch * featureChangePred(h, s) for _, h, s in all_triples)
+    all_feature_changes = list(-params.lambda_featureChange * featureChangePred(h, s) for _, h, s in all_triples)
     print("Calculated feature changes for each feature")
     
     triples_covers: List = [set() for i in range(triples_no)]
@@ -143,7 +141,7 @@ def _optimize(
     print("Calculated covers for each triple")
     
     almost_all = [inc + cost + change for inc, cost, change in zip(all_incorrects, all_feature_costs, all_feature_changes)]
-    best_subset = optimizer(almost_all, triples_covers, X_aff.shape[0], lcov=lcov)
+    best_subset = optimizer(almost_all, triples_covers, X_aff.shape[0], params=params)
     
     final_incorrects = sum([all_incorrects[i] for i in best_subset])
     final_coverage = len(set().union(*[triples_covers[i] for i in best_subset]))

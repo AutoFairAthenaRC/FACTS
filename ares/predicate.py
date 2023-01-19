@@ -3,7 +3,7 @@ from typing import List, Any, Dict
 from enum import Enum
 import operator
 
-from parameters import featureChanges, featureCosts
+from parameters import ParameterProxy
 
 class Operator(Enum):
     EQ = "="
@@ -55,20 +55,20 @@ class Predicate:
     def width(self):
         return len(self.features)
     
-def featureCostPred(p1: Predicate, p2: Predicate):
+def featureCostPred(p1: Predicate, p2: Predicate, params: ParameterProxy = ParameterProxy()):
     ret = 0
     for i, f in enumerate(p1.features):
         if p1.values[i] != p2.values[i]:
-            ret += featureCosts[f]
+            ret += params.featureCosts[f]
     return ret
 
-def featureChangePred(p1: Predicate, p2: Predicate):
+def featureChangePred(p1: Predicate, p2: Predicate, params: ParameterProxy = ParameterProxy()):
     # return sum(featureChanges[feat](p1.values[i], p2.values[i]) for i, feat in enumerate(p1.features))
     total = 0
     for i, f in enumerate(p1.features):
         val1 = p1.values[i]
         val2 = p2.values[i]
-        costChange = featureChanges[f](val1, val2)
+        costChange = params.featureChanges[f](val1, val2)
         total += costChange
     return total
 
