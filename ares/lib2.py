@@ -3,7 +3,7 @@ from pandas import DataFrame
 
 from parameters import *
 from models import ModelAPI
-from apriori import runApriori, preprocessDataset, aprioriout2predicateList
+from frequent_itemsets import runApriori, preprocessDataset, aprioriout2predicateList
 from recourse_sets import TwoLevelRecourseSet
 from metrics import cover, incorrectRecoursesSingle, incorrectRecoursesSubmodular, incorrectRecourses, featureCost, featureChange
 
