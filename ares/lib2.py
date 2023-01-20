@@ -5,7 +5,7 @@ from parameters import *
 from models import ModelAPI
 from apriori import runApriori, preprocessDataset, aprioriout2predicateList
 from recourse_sets import TwoLevelRecourseSet
-from metrics import cover, incorrectRecoursesSingle, incorrectRecoursesSubmodular
+from metrics import cover, incorrectRecoursesSingle, incorrectRecoursesSubmodular, incorrectRecourses, featureCost, featureChange
 
 ## Re-exporting
 from optimization import optimize_vanilla
@@ -15,6 +15,21 @@ from predicate import Predicate
 
 def recourse_report(R: TwoLevelRecourseSet, X_aff: DataFrame, model: ModelAPI) -> str:
     ret = []
+    # first, print the statistics of the whole recourse set
+    incorrects_additive = incorrectRecourses(R, X_aff, model)
+    incorrects_at_least_one = incorrectRecoursesSubmodular(R, X_aff, model)
+    coverage = cover(R, X_aff)
+    feature_cost = featureCost(R)
+    feature_change = featureChange(R)
+
+    ret.append(f"Total coverage: {coverage / X_aff.shape[0]:.3%} (over all affected).\n")
+    ret.append(f"Total incorrect recourses: {incorrects_additive / coverage:.3%} (over all those covered).\n")
+    if incorrects_at_least_one != incorrects_additive:
+        ret.append(f"\tAttention! If measured as at-least-one-correct, it changes to {incorrects_at_least_one / coverage:.3%}!\n")
+    ret.append(f"Total feature cost: {feature_cost}.\n")
+    ret.append(f"Total feature change: {feature_change}.\n")
+
+    # then, print the rules with the statistics for each rule separately
     sensitive = R.feature
     for val in R.values:
         ret.append(f"If {sensitive} = {val}:\n")

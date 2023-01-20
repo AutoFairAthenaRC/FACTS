@@ -54,7 +54,7 @@ class Predicate:
     
     def width(self):
         return len(self.features)
-    
+
 def featureCostPred(p1: Predicate, p2: Predicate, params: ParameterProxy = ParameterProxy()):
     ret = 0
     for i, f in enumerate(p1.features):
