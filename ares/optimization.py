@@ -1,3 +1,5 @@
+import itertools
+
 from typing import List, Set, Tuple, Dict
 from collections import defaultdict
 
@@ -149,4 +151,25 @@ def optimize(
     final_feature_change = sum([all_feature_changes[i] for i in best_subset])
     return [all_triples[i] for i in best_subset], final_incorrects, final_coverage, final_feature_cost, final_feature_change
 
-# def optimize_with_pairs(SD: List[Predicate], ifs: List[Predicate])
+def optimize_sameif(
+    SD: List[Predicate],
+    ifs: List[Predicate],
+    thens: Dict[str, List[Predicate]],
+    X_aff: DataFrame,
+    model: ModelAPI,
+    params: ParameterProxy = ParameterProxy()
+) -> List[Tuple[Predicate, Predicate, Predicate]]:
+    sensitive_attr_values = [sd.values[0] for sd in SD]
+    atoms = []
+    print(thens.items())
+    for ifclause in ifs:
+        for thenlist in itertools.product(*list(thens.items())):
+            print(thenlist)
+            if all(recIsValid(ifclause, thenclause) for _, thenclause in thenlist):
+                atoms.append((ifclause, dict(thenlist)))
+    print(len(atoms))
+
+    raise NotImplementedError
+    return []
+
+
