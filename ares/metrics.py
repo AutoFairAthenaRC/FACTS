@@ -45,6 +45,9 @@ def incorrectRecoursesSubmodular(R: TwoLevelRecourseSet, X_aff: DataFrame, model
         corrected.update(covered_and_corrected.tolist())
     return len(covered - corrected)
 
+def coverSingle(p: Predicate, X_aff: DataFrame) -> int:
+    return sum(1 for _, x in X_aff.iterrows() if p.satisfies(x))
+
 def cover(R: TwoLevelRecourseSet, X_aff: DataFrame, percentage=False):
     suggestions = [list(R.suggest(x)) for _, x in X_aff.iterrows()]
     ret = len([ss for ss in suggestions if len(ss) > 0])
