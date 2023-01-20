@@ -1,5 +1,5 @@
 from pandas import DataFrame
-from typing import List
+from typing import List, Tuple
 
 from mlxtend.preprocessing import TransactionEncoder
 from mlxtend.frequent_patterns import fpgrowth
@@ -12,7 +12,7 @@ def preprocessDataset(data: DataFrame) -> DataFrame:
         d[col] = d[col] + "+" + col
     return d
 
-def aprioriout2predicateList(apriori_out: DataFrame) -> List[Predicate]:
+def aprioriout2predicateList(apriori_out: DataFrame) -> Tuple[List[Predicate], List[float]]:
     predicate_set = []
     for itemset in apriori_out["itemsets"].to_numpy():
         feature_value_splits = map(lambda item: item.split("+"), list(itemset))
@@ -20,7 +20,7 @@ def aprioriout2predicateList(apriori_out: DataFrame) -> List[Predicate]:
         pred = Predicate.from_dict(pred)
         predicate_set.append(pred)
     
-    return predicate_set
+    return predicate_set, apriori_out["support"].to_numpy().tolist()
 
 def runApriori(data: DataFrame, min_support: float = 0.001) -> DataFrame:
     sets = data.to_numpy().tolist()
