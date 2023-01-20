@@ -1,3 +1,5 @@
+from typing import List, Tuple, Dict
+
 import numpy as np
 from pandas import DataFrame
 
@@ -48,6 +50,18 @@ def recourse_report(R: TwoLevelRecourseSet, X_aff: DataFrame, model: ModelAPI) -
             ret.append(f"\t\tCoverage: {coverage:.3%} over all affected.\n")
             ret.append(f"\t\tIncorrect recourses additive: {inc_original:.3%} over all individuals covered by this rule.\n")
             ret.append(f"\t\tIncorrect recourses at-least-one: {inc_submodular:.3%} over all individuals covered by this rule.\n")
+    return "".join(ret)
+
+def recourse_report_preprocessed(groups: List[str], rules: Dict[str, List[Tuple[Predicate, Predicate, float, float]]]) -> str:
+    ret = []
+    for val in groups:
+        ret.append(f"For subgroup '{val}':\n")
+        rules_subgroup = rules[val]
+        for h, s, coverage, incorrectness in rules_subgroup:
+            ret.append(f"\tIf {h},\n\tThen {s}.\n")
+
+            ret.append(f"\t\tCoverage: {coverage:.3%} of those in the subgroup that are affected.\n")
+            ret.append(f"\t\tIncorrect recourses: {incorrectness:.3%} over all individuals covered by this rule.\n")
     return "".join(ret)
 
 def split_dataset(X: DataFrame, attr: str):
