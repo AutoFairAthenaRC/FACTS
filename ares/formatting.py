@@ -71,6 +71,6 @@ def recourse_report_reverse(rules: List[Tuple[Predicate, Dict[str, List[Tuple[Pr
         for subgroup, thens in all_thens.items():
             ret.append(f"\tSubgroup '{subgroup}'\n")
             for then, coverage, correctness in thens:
-                ret.append(f"\t\tMake {then} with coverage {coverage} and correctness {correctness}.")
+                ret.append(f"\t\tMake {then} with coverage {coverage} and correctness {correctness}.\n")
 
     return "".join(ret)
