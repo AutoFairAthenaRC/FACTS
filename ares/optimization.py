@@ -11,9 +11,19 @@ from models import ModelAPI
 from metrics import incorrectRecoursesSingle
 from parameters import ParameterProxy
 
+def ground_set_generation_vanilla(SD: List[Predicate], RL: List[Predicate], X_aff: DataFrame, model: ModelAPI):
+    valid_triples = [(sd, h, s) for sd in SD for h in RL for s in RL if recIsValid(h, s)]
+    return valid_triples
+
 def optimizer(modulars: List[int], covers: List[Set[int]], N_aff: int, params: ParameterProxy = ParameterProxy()):
     assert len(modulars) == len(covers)
     lcov = params.lambda_cover
+
+    modulars_covers_zipped = zip(modulars, covers)
+    sorted_zipped = sorted(modulars_covers_zipped, key=lambda pair: pair[0], reverse=True)
+
+    modulars = [e[0] for e in sorted_zipped]
+    covers = [e[1] for e in sorted_zipped]
 
     N = len(modulars)
     singleton_rewards = [mod + lcov * len(cov) for mod, cov in zip(modulars, covers)]
@@ -170,6 +180,5 @@ def optimize_sameif(
     print(len(atoms))
 
     raise NotImplementedError
-    return []
 
 

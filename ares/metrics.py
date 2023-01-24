@@ -8,6 +8,9 @@ from predicate import Predicate, recIsValid, featureCostPred, featureChangePred
 from models import ModelAPI
 from recourse_sets import TwoLevelRecourseSet
 
+def recourseAccuracy():
+    raise NotImplementedError()
+
 def incorrectRecoursesSingle(sd: Predicate, h: Predicate, s: Predicate, X_aff: DataFrame, model: ModelAPI) -> int:
     assert recIsValid(h, s)
     # X_aff_subgroup = X_aff[[h.satisfies(x) for i, x in X_aff.iterrows()]]

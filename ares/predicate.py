@@ -24,6 +24,14 @@ class Predicate:
     values: List[Any] = field(default_factory=list)
     operators: List[Operator] = field(default_factory=list, repr=False)
 
+    def __eq__(self, __o: object) -> bool:
+        d1 = self.to_dict()
+        d2 = self.to_dict()
+        return d1 == d2
+    
+    def __hash__(self) -> int:
+        return hash(repr(self))
+
     def __str__(self) -> str:
         ret = []
         boo = True
@@ -48,6 +56,9 @@ class Predicate:
         p.values = list(d.values())
         p.operators = [Operator.EQ for _ in range(len(d))]
         return p
+    
+    def to_dict(self) -> Dict[str, str]:
+        return dict(zip(self.features, self.values))
     
     def satisfies(self, x) -> bool:
         return all(op.eval(x[feat], val) for feat, val, op in zip(self.features, self.values, self.operators))
