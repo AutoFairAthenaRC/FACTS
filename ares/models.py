@@ -1,7 +1,8 @@
 import pandas as pd
 from typing import List, Optional, Protocol
-
 from numpy.typing import ArrayLike
+
+from sklearn.base import BaseEstimator, ClassifierMixin
 
 from xgboost import XGBClassifier
 from omnixai.data.tabular import Tabular
@@ -53,3 +54,7 @@ class customXGB:
     
 #    def accuracy(self, X, y: pd.Series) -> float:
 #        pass
+
+class customLogistic(BaseEstimator, ClassifierMixin):
+    def __init__(self):
+        pass

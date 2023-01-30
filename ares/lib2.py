@@ -74,12 +74,14 @@ def valid_triples_with_coverage_correctness(
     X: DataFrame, model: ModelAPI,
     sensitive_attribute: str
 ) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
+    # get model predictions
+    preds = model.predict(X)
     # find affected individuals
-    X_aff_idxs = np.where(model.predict(X) == 0)[0]
+    X_aff_idxs = np.where(preds == 0)[0]
     X_aff = X.iloc[X_aff_idxs, :]
 
     # find unaffected individuals
-    X_unaff_idxs = np.where(model.predict(X) == 1)[0]
+    X_unaff_idxs = np.where(preds == 1)[0]
     X_unaff = X.iloc[X_unaff_idxs, :]
 
     # find descriptors of all sensitive subgroups
