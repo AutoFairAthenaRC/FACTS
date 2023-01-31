@@ -20,12 +20,12 @@ def split_dataset(X: DataFrame, attr: str):
     grouping = X.groupby(attr)
     return {val: grouping.get_group(val) for val in vals}
 
-def global_counterfactuals_ares(X: DataFrame, model: ModelAPI, sensitive_attribute: str, subsample_size=400):
+def global_counterfactuals_ares(X: DataFrame, model: ModelAPI, sensitive_attribute: str, subsample_size=400, freqitem_minsupp=0.01):
     X_aff_idxs = np.where(model.predict(X) == 0)[0]
     X_aff = X.iloc[X_aff_idxs, :]
 
     d = X.drop([sensitive_attribute], axis=1)
-    freq_itemsets = runApriori(preprocessDataset(d), min_support=0.03)
+    freq_itemsets = runApriori(preprocessDataset(d), min_support=freqitem_minsupp)
     freq_itemsets.reset_index()
 
     RL = aprioriout2predicateList(freq_itemsets)
@@ -72,7 +72,8 @@ def global_counterfactuals_threshold(
 
 def valid_triples_with_coverage_correctness(
     X: DataFrame, model: ModelAPI,
-    sensitive_attribute: str
+    sensitive_attribute: str,
+    freqitem_minsupp: float = 0.01
 ) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
     # get model predictions
     preds = model.predict(X)
@@ -91,7 +92,7 @@ def valid_triples_with_coverage_correctness(
     affected_subgroups = {sg: X_aff[X_aff[sensitive_attribute] == sg].drop([sensitive_attribute], axis=1) for sg in subgroups}
 
     # calculate frequent itemsets for each subgroup and turn them into predicates
-    freq_itemsets = {sg: runApriori(preprocessDataset(affected_sg), min_support=0.03) for sg, affected_sg in affected_subgroups.items()}
+    freq_itemsets = {sg: runApriori(preprocessDataset(affected_sg), min_support=freqitem_minsupp) for sg, affected_sg in affected_subgroups.items()}
     RLs_and_supports = {sg: aprioriout2predicateList(freq) for sg, freq in freq_itemsets.items()}
 
     # turn RLs into dictionaries for easier comparison
@@ -112,7 +113,7 @@ def valid_triples_with_coverage_correctness(
     aff_intersection = [(Predicate.from_dict(d), supps) for d, supps in aff_intersection]
     
     # Frequent itemsets for the unaffacted (to be used in the then clauses)
-    freq_unaffected, _ = aprioriout2predicateList(runApriori(preprocessDataset(X_unaff), min_support=0.03))
+    freq_unaffected, _ = aprioriout2predicateList(runApriori(preprocessDataset(X_unaff), min_support=freqitem_minsupp))
 
     # Filter all if-then pairs to keep only valid
     ifthens = [(h, s, ifsupps) for h, ifsupps in aff_intersection for s in freq_unaffected if recIsValid(h, s)]
