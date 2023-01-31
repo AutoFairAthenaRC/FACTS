@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Any
 
 from pandas import DataFrame
 
@@ -64,13 +64,24 @@ def recourse_report_preprocessed(groups: List[str], rules: Dict[str, List[Tuple[
             ret.append(f"\t\tIncorrect recourses: {incorrectness:.3%} over all individuals covered by this rule.\n")
     return "".join(ret)
 
+def to_bold_str(s: Any) -> str:
+    return f"\033[1m{s}\033[0m"
+
+def to_blue_str(s: Any) -> str:
+    return f"\033[0;34m{s}\033[0m"
+
+def to_green_str(s: Any) -> str:
+    return f"\033[0;32m{s}\033[0m"
+
 def recourse_report_reverse(rules: List[Tuple[Predicate, Dict[str, List[Tuple[Predicate, float, float]]]]]) -> str:
     ret = []
     for ifclause, all_thens in rules:
-        ret.append(f"If {ifclause}:\n")
+        ret.append(f"If {to_bold_str(ifclause)}:\n")
         for subgroup, thens in all_thens.items():
-            ret.append(f"\tSubgroup '{subgroup}'\n")
+            ret.append(f"\tSubgroup '{to_bold_str(subgroup)}'\n")
             for then, coverage, correctness in thens:
-                ret.append(f"\t\tMake {then} with coverage {coverage} and correctness {correctness}.\n")
+                cov_str = to_blue_str(f"{coverage:.4%}")
+                cor_str = to_green_str(f"{correctness:.4%}")
+                ret.append(f"\t\tMake {to_bold_str(then)} with coverage {cov_str} and correctness {cor_str}.\n")
 
     return "".join(ret)
