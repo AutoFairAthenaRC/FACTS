@@ -1,3 +1,4 @@
+import numpy as np
 from pandas import DataFrame
 from typing import List, Tuple
 
@@ -9,14 +10,14 @@ from predicate import Predicate
 def preprocessDataset(data: DataFrame) -> DataFrame:
     d = data.copy()
     for col in d:
-        d[col] = d[col] + "+" + col
+        d[col] = d[col].astype(str) + "+" + col + "+" + str(d.dtypes[col]) # type: ignore
     return d
 
 def aprioriout2predicateList(apriori_out: DataFrame) -> Tuple[List[Predicate], List[float]]:
     predicate_set = []
     for itemset in apriori_out["itemsets"].to_numpy():
         feature_value_splits = map(lambda item: item.split("+"), list(itemset))
-        pred = {feature: value for value, feature in feature_value_splits}
+        pred = {feature: np.array([value]).astype(feature_type)[0] for value, feature, feature_type in feature_value_splits}
         pred = Predicate.from_dict(pred)
         predicate_set.append(pred)
     
