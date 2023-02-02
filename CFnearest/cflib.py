@@ -23,6 +23,7 @@ def create_df(X,y,dataset):
     df = X.copy()
     df['label'] = y
     if dataset == 'adult':
+        df = df.drop(columns='education',axis=1)
         #df = df.drop(columns=['sex','race'])
         df = df.reset_index(drop=True)
     elif dataset == 'compas':
@@ -35,7 +36,6 @@ def create_df(X,y,dataset):
 
 def preprocess(df,dataset):
     if dataset == 'adult':
-        df = df.drop(columns='education',axis=1)
         #df['marital-status'].replace('Never-married', 'NotMarried',inplace=True)
         #df['marital-status'].replace(['Married-AF-spouse'], 'Married',inplace=True)
         #df['marital-status'].replace(['Married-civ-spouse'], 'Married',inplace=True)
@@ -126,25 +126,25 @@ def most_occured(df):
 
     return pd.DataFrame(df1,columns=["Data","Most occurred Category","Percentage (%)"])
 
-def group(df,prot_attr):
-    priv=df.loc[df[prot_attr] == 1]
-    unpriv=df.loc[df[prot_attr] == 0]
+def group(df,sensitive_attribute):
+    priv=df.loc[df[sensitive_attribute] == 1]
+    unpriv=df.loc[df[sensitive_attribute] == 0]
 
     affected_priv=priv.loc[df['label'] == 0]
     affected_unpriv=unpriv.loc[df['label'] == 0]
     unaffected_priv=priv.loc[df['label'] == 1]
     unaffected_unpriv=unpriv.loc[df['label'] == 1]
 
-    a_priv=affected_priv.drop([prot_attr,"label"], axis=1)
+    a_priv=affected_priv.drop([sensitive_attribute,"label"], axis=1)
     a_priv = a_priv.reset_index()
     a_priv = a_priv.drop(columns = 'index')
-    a_unpriv=affected_unpriv.drop([prot_attr,"label"], axis=1)
+    a_unpriv=affected_unpriv.drop([sensitive_attribute,"label"], axis=1)
     a_unpriv = a_unpriv.reset_index()
     a_unpriv = a_unpriv.drop(columns = 'index')
-    u_priv=unaffected_priv.drop([prot_attr,"label"], axis=1)
+    u_priv=unaffected_priv.drop([sensitive_attribute,"label"], axis=1)
     u_priv = u_priv.reset_index()
     u_priv = u_priv.drop(columns = 'index')
-    u_unpriv=unaffected_unpriv.drop([prot_attr,"label"], axis=1)
+    u_unpriv=unaffected_unpriv.drop([sensitive_attribute,"label"], axis=1)
     u_unpriv = u_unpriv.reset_index()
     u_unpriv = u_unpriv.drop(columns = 'index')
 
