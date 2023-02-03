@@ -73,11 +73,16 @@ def to_blue_str(s: Any) -> str:
 def to_green_str(s: Any) -> str:
     return f"\033[0;32m{s}\033[0m"
 
-def recourse_report_reverse(rules: List[Tuple[Predicate, Dict[str, List[Tuple[Predicate, float, float]]]]]) -> str:
+def recourse_report_reverse(
+    rules: List[Tuple[Predicate, Dict[str, List[Tuple[Predicate, float, float]]]]],
+    missing_subgroup_val: str = "N/A"
+) -> str:
     ret = []
     for ifclause, all_thens in rules:
         ret.append(f"If {to_bold_str(ifclause)}:\n")
         for subgroup, thens in all_thens.items():
+            if subgroup == missing_subgroup_val:
+                continue
             ret.append(f"\tSubgroup '{to_bold_str(subgroup)}'\n")
             for then, coverage, correctness in thens:
                 cov_str = to_blue_str(f"{coverage:.4%}")
