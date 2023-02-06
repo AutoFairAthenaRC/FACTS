@@ -165,26 +165,26 @@ def calculate_if_group_costs(
     thenclauses: Dict[str, List[Tuple[Predicate, float, float]]],
     params: ParameterProxy = ParameterProxy()
 ) -> Dict[str, float]:
-    return {sg: calculate_if_group_cost(ifclause, thens, params) for sg, thens in thenclauses.items()}
+    return {sg: calculate_if_group_cost(ifclause, thens, params=params) for sg, thens in thenclauses.items()}
 
 def calculate_cost_difference_2groups(
     ifclause: Predicate,
     thenclauses: Dict[str, List[Tuple[Predicate, float, float]]],
     params: ParameterProxy = ParameterProxy()
 ) -> float:
-    group_costs = list(calculate_if_group_costs(ifclause, thenclauses, params).values())
+    group_costs = list(calculate_if_group_costs(ifclause, thenclauses, params=params).values())
     return abs(group_costs[0] - group_costs[1])
 
 def sort_triples_by_costdiff_2groups(
     rulesbyif: Dict[Predicate, Dict[str, List[Tuple[Predicate, float, float]]]],
     params: ParameterProxy = ParameterProxy()
-) -> Dict[Predicate, Dict[str, List[Tuple[Predicate, float, float]]]]:
+) -> List[Tuple[Predicate, Dict[str, List[Tuple[Predicate, float, float]]]]]:
     def apply_calc(ifthens):
         return calculate_cost_difference_2groups(ifthens[0], ifthens[1], params)
     ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
-    return dict(ret)
+    return ret
 
-def construct_feature_cost_dict(num_cols: List[str], cate_cols: List[str]):
+def construct_feature_cost_dict(num_cols: List[str], cate_cols: List[str]) -> Dict[str, Callable[[Any, Any], int]]:
     def feature_change_cate(v1, v2):
         return 0 if v1 == v2 else 1
     def feature_change_num(v1, v2):
@@ -193,3 +193,4 @@ def construct_feature_cost_dict(num_cols: List[str], cate_cols: List[str]):
     ret_cate = {col: feature_change_cate for col in cate_cols}
     ret_num = {col: feature_change_num for col in num_cols}
     return {**ret_cate, **ret_num}
+
