@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict, Tuple, Any, Optional
 
 from pandas import DataFrame
 
@@ -74,19 +74,30 @@ def to_green_str(s: Any) -> str:
     return f"\033[0;32m{s}\033[0m"
 
 def recourse_report_reverse(
-    rules: List[Tuple[Predicate, Dict[str, List[Tuple[Predicate, float, float]]]]],
+    rules: List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]],
+    population_sizes: Optional[Dict[str, int]] = None,
     missing_subgroup_val: str = "N/A"
 ) -> str:
     ret = []
-    for ifclause, all_thens in rules:
+    for ifclause, sg_thens in rules:
         ret.append(f"If {to_bold_str(ifclause)}:\n")
-        for subgroup, thens in all_thens.items():
+        for subgroup, (cov, thens) in sg_thens.items():
             if subgroup == missing_subgroup_val:
                 continue
-            ret.append(f"\tSubgroup '{to_bold_str(subgroup)}'\n")
-            for then, coverage, correctness in thens:
-                cov_str = to_blue_str(f"{coverage:.4%}")
+
+            # print coverage statistics for the subgroup
+            cov_str = to_blue_str(f"{cov:.4%}")
+            ret.append(f"\tSubgroup '{to_bold_str(subgroup)}', {cov_str} covered")
+            if population_sizes is not None:
+                if subgroup in population_sizes:
+                    ret.append(f" out of {population_sizes[subgroup]}")
+                else:
+                    ret.append(" (protected subgroup population size not given)")
+            ret.append("\n")
+
+            # print each available recourse together with the respective correctness
+            for then, correctness in thens:
                 cor_str = to_green_str(f"{correctness:.4%}")
-                ret.append(f"\t\tMake {to_bold_str(then)} with coverage {cov_str} and correctness {cor_str}.\n")
+                ret.append(f"\t\tMake {to_bold_str(then)} with correctness {cor_str}.\n")
 
     return "".join(ret)

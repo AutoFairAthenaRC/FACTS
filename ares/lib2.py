@@ -56,7 +56,7 @@ def global_counterfactuals_threshold(
     threshold_correctness=0.8
 ) -> Dict[str, List[Tuple[Predicate, Predicate, float, float]]]:
     # call function to calculate all valid triples along with coverage and correctness metrics
-    ifthens_with_correctness = valid_triples_with_coverage_correctness(X, model, sensitive_attribute)
+    ifthens_with_correctness = valid_ifthens_with_coverage_correctness(X, model, sensitive_attribute)
 
     # all we need now is which are the subgroups (e.g. Male-Female)
     subgroups = np.unique(X[sensitive_attribute])
@@ -70,7 +70,7 @@ def global_counterfactuals_threshold(
     
     return ifthens_filtered
 
-def valid_triples_with_coverage_correctness(
+def valid_ifthens_with_coverage_correctness(
     X: DataFrame, model: ModelAPI,
     sensitive_attribute: str,
     freqitem_minsupp: float = 0.01
@@ -135,16 +135,15 @@ def valid_triples_with_coverage_correctness(
     return ifthens_with_correctness
 
 def rules2rulesbyif(rules: List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]
-) -> Dict[Predicate, Dict[str, List[Tuple[Predicate, float, float]]]]:
-    subgroups = list(rules[0][2].keys())
-
+) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]:
     # group rules based on If clauses, instead of protected subgroups!
-    rules_by_if = {}
+    rules_by_if: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]] = {}
     for h, s, covs, cors in rules:
-        block = rules_by_if.get(h, {sg: [] for sg in subgroups})
-        for sg, thens in block.items():
-            thens.append((s, covs[sg], cors[sg]))
-        rules_by_if[h] = block
+        if h not in rules_by_if:
+            rules_by_if[h] = {sg: (cov, []) for sg, cov in covs.items()}
+        
+        for sg, (_cov, sg_thens) in rules_by_if[h].items():
+            sg_thens.append((s, cors[sg]))
     
     return rules_by_if
 
@@ -155,32 +154,36 @@ def rules2rulesbyif(rules: List[Tuple[Predicate, Predicate, Dict[str, float], Di
 
 def calculate_if_group_cost(
     ifclause: Predicate,
-    thenclauses: List[Tuple[Predicate, float, float]],
+    thenclauses: List[Tuple[Predicate, float]],
     params: ParameterProxy = ParameterProxy()
 ) -> float:
-    return float(np.mean([cor * featureChangePred(ifclause, thenclause, params=params) for thenclause, _, cor in thenclauses]))
+    return float(np.mean([cor * featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses]))
 
 def calculate_if_group_costs(
     ifclause: Predicate,
-    thenclauses: Dict[str, List[Tuple[Predicate, float, float]]],
+    thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float]]]],
     params: ParameterProxy = ParameterProxy()
 ) -> Dict[str, float]:
-    return {sg: calculate_if_group_cost(ifclause, thens, params=params) for sg, thens in thenclauses.items()}
+    return {sg: calculate_if_group_cost(ifclause, thens, params=params) for sg, (_cov, thens) in thenclauses.items()}
 
 def calculate_cost_difference_2groups(
     ifclause: Predicate,
-    thenclauses: Dict[str, List[Tuple[Predicate, float, float]]],
+    thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float]]]],
+    group1: str = "0",
+    group2: str = "1",
     params: ParameterProxy = ParameterProxy()
 ) -> float:
-    group_costs = list(calculate_if_group_costs(ifclause, thenclauses, params=params).values())
-    return abs(group_costs[0] - group_costs[1])
+    group_costs = calculate_if_group_costs(ifclause, thenclauses, params=params)
+    return abs(group_costs[group1] - group_costs[group2])
 
 def sort_triples_by_costdiff_2groups(
-    rulesbyif: Dict[Predicate, Dict[str, List[Tuple[Predicate, float, float]]]],
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    group1: str = "0",
+    group2: str = "1",
     params: ParameterProxy = ParameterProxy()
-) -> List[Tuple[Predicate, Dict[str, List[Tuple[Predicate, float, float]]]]]:
+) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]:
     def apply_calc(ifthens):
-        return calculate_cost_difference_2groups(ifthens[0], ifthens[1], params)
+        return calculate_cost_difference_2groups(ifthens[0], ifthens[1], group1, group2, params)
     ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
     return ret
 
