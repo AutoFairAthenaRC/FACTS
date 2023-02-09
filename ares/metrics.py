@@ -11,8 +11,21 @@ from recourse_sets import TwoLevelRecourseSet
 def recourseAccuracy():
     raise NotImplementedError()
 
+def incorrectRecoursesIfThen(ifclause: Predicate, thenclause: Predicate, X_aff: DataFrame, model: ModelAPI) -> int:
+    X_aff_covered_bool = (X_aff[ifclause.features] == ifclause.values).all(axis=1)
+    X_aff_covered = X_aff[X_aff_covered_bool].copy()
+    if X_aff_covered.shape[0] == 0:
+        return 0
+    
+    X_aff_covered[thenclause.features] = thenclause.values
+
+    preds = model.predict(X_aff_covered)
+    return np.shape(preds)[0] - np.sum(preds)
+
 def incorrectRecoursesSingle(sd: Predicate, h: Predicate, s: Predicate, X_aff: DataFrame, model: ModelAPI) -> int:
-    assert recIsValid(h, s)
+    """To caller: make sure that h, s is a valid pair of predicates for an if-then clause!"""
+    # assert recIsValid(h, s)
+
     # X_aff_subgroup = X_aff[[h.satisfies(x) for i, x in X_aff.iterrows()]]
     X_aff_covered = X_aff[X_aff.apply(lambda x: h.satisfies(x) and sd.satisfies(x), axis=1)].copy()
     if X_aff_covered.shape[0] == 0:
