@@ -25,8 +25,11 @@ class Predicate:
     operators: List[Operator] = field(default_factory=list, repr=False)
 
     def __eq__(self, __o: object) -> bool:
+        if not isinstance(__o, Predicate):
+            return False
+        
         d1 = self.to_dict()
-        d2 = self.to_dict()
+        d2 = __o.to_dict()
         return d1 == d2
     
     def __hash__(self) -> int:
