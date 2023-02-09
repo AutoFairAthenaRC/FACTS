@@ -1,4 +1,5 @@
 from typing import List, Tuple, Dict
+import functools
 
 import numpy as np
 from pandas import DataFrame
@@ -7,7 +8,7 @@ from parameters import *
 from models import ModelAPI
 from frequent_itemsets import runApriori, preprocessDataset, aprioriout2predicateList
 from recourse_sets import TwoLevelRecourseSet
-from metrics import incorrectRecoursesSingle
+from metrics import incorrectRecoursesIfThen
 
 ## Re-exporting
 from optimization import optimize_vanilla
@@ -71,7 +72,8 @@ def global_counterfactuals_threshold(
     return ifthens_filtered
 
 def valid_ifthens_with_coverage_correctness(
-    X: DataFrame, model: ModelAPI,
+    X: DataFrame,
+    model: ModelAPI,
     sensitive_attribute: str,
     freqitem_minsupp: float = 0.01
 ) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
@@ -110,6 +112,7 @@ def valid_ifthens_with_coverage_correctness(
             continue
 
         aff_intersection = intersect_predicate_lists(aff_intersection, RLs, sg)
+    
     aff_intersection = [(Predicate.from_dict(d), supps) for d, supps in aff_intersection]
     
     # Frequent itemsets for the unaffacted (to be used in the then clauses)
@@ -125,7 +128,7 @@ def valid_ifthens_with_coverage_correctness(
         recourse_correctness = {}
         for sg in subgroups:
             sd = Predicate.from_dict({sensitive_attribute: sg})
-            incorrect_recourses_for_sg = incorrectRecoursesSingle(sd, h, s, X_aff, model)
+            incorrect_recourses_for_sg = incorrectRecoursesIfThen(h, s, affected_subgroups[sg].assign(**{sensitive_attribute: sg}), model)
             covered_sg = ifsupps[sg] * affected_subgroups[sg].shape[0]
             inc_sg = incorrect_recourses_for_sg / covered_sg
             recourse_correctness[sg] = 1 - inc_sg
@@ -187,13 +190,35 @@ def sort_triples_by_costdiff_2groups(
     ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
     return ret
 
-def construct_feature_cost_dict(num_cols: List[str], cate_cols: List[str]) -> Dict[str, Callable[[Any, Any], int]]:
-    def feature_change_cate(v1, v2):
-        return 0 if v1 == v2 else 1
-    def feature_change_num(v1, v2):
-        return abs(v1 - v2)
+def naive_feature_change_builder(
+    num_cols: List[str],
+    cate_cols: List[str],
+    feature_weights: Dict[str, int],
+) -> Dict[str, Callable[[Any, Any], int]]:
+    def feature_change_cate(v1, v2, weight):
+        return (0 if v1 == v2 else 1) * weight
+    def feature_change_num(v1, v2, weight):
+        return abs(v1 - v2) * weight
     
-    ret_cate = {col: feature_change_cate for col in cate_cols}
-    ret_num = {col: feature_change_num for col in num_cols}
+    ret_cate = {col: functools.partial(feature_change_cate, weight=feature_weights.get(col, 1)) for col in cate_cols}
+    ret_num = {col: functools.partial(feature_change_num, weight=feature_weights.get(col, 1)) for col in num_cols}
     return {**ret_cate, **ret_num}
 
+def max_intergroup_cost_diff(
+    ifclause: Predicate,
+    thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float]]]],
+    params: ParameterProxy = ParameterProxy()
+) -> float:
+    group_costs = list(calculate_if_group_costs(ifclause, thenclauses, params).values())
+    return max(group_costs) - min(group_costs)
+
+def sort_triples_by_max_costdiff(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    params: ParameterProxy = ParameterProxy()
+) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]:
+    def apply_calc(ifthens):
+        ifclause = ifthens[0]
+        thenclauses = ifthens[1]
+        return max_intergroup_cost_diff(ifclause, thenclauses, params=params)
+    ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
+    return ret
