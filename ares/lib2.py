@@ -155,19 +155,46 @@ def rules2rulesbyif(rules: List[Tuple[Predicate, Predicate, Dict[str, float], Di
 
 
 
-def calculate_if_group_cost(
+def if_group_cost_mean_with_correctness(
     ifclause: Predicate,
     thenclauses: List[Tuple[Predicate, float]],
     params: ParameterProxy = ParameterProxy()
 ) -> float:
-    return float(np.mean([cor * featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses]))
+    return np.mean([cor * featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses]).astype(float)
+
+def if_group_cost_mean_correctness_weighted(
+    ifclause: Predicate,
+    thenclauses: List[Tuple[Predicate, float]],
+    params: ParameterProxy = ParameterProxy()
+) -> float:
+    feature_changes = np.array([featureChangePred(ifclause, thenclause, params=params) for thenclause, _ in thenclauses])
+    corrs = np.array([cor for _, cor in thenclauses])
+    return np.average(feature_changes, weights=corrs).astype(float)
+
+def if_group_cost_max_change_correctness_threshold(
+    ifclause: Predicate,
+    thenclauses: List[Tuple[Predicate, float]],
+    cor_thres: float = 0.5,
+    params: ParameterProxy = ParameterProxy()
+) -> float:
+    feature_changes = np.array([
+        featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses if cor >= cor_thres
+        ])
+    try:
+        ret = feature_changes.min()
+    except ValueError:
+        ret = np.inf
+    return ret
+
+if_group_cost_f_t = Callable[[Predicate, List[Tuple[Predicate, float]]], float]
 
 def calculate_if_group_costs(
     ifclause: Predicate,
     thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float]]]],
-    params: ParameterProxy = ParameterProxy()
+    group_calculator: if_group_cost_f_t = if_group_cost_mean_with_correctness,
+    **kwargs
 ) -> Dict[str, float]:
-    return {sg: calculate_if_group_cost(ifclause, thens, params=params) for sg, (_cov, thens) in thenclauses.items()}
+    return {sg: group_calculator(ifclause, thens, **kwargs) for sg, (_cov, thens) in thenclauses.items()}
 
 def calculate_cost_difference_2groups(
     ifclause: Predicate,
@@ -207,18 +234,18 @@ def naive_feature_change_builder(
 def max_intergroup_cost_diff(
     ifclause: Predicate,
     thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float]]]],
-    params: ParameterProxy = ParameterProxy()
+    **kwargs
 ) -> float:
-    group_costs = list(calculate_if_group_costs(ifclause, thenclauses, params).values())
+    group_costs = list(calculate_if_group_costs(ifclause, thenclauses, **kwargs).values())
     return max(group_costs) - min(group_costs)
 
 def sort_triples_by_max_costdiff(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
-    params: ParameterProxy = ParameterProxy()
+    **kwargs
 ) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]:
     def apply_calc(ifthens):
         ifclause = ifthens[0]
         thenclauses = ifthens[1]
-        return max_intergroup_cost_diff(ifclause, thenclauses, params=params)
+        return max_intergroup_cost_diff(ifclause, thenclauses, **kwargs)
     ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
     return ret
