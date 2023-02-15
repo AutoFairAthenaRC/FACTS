@@ -9,6 +9,7 @@ from models import ModelAPI
 from frequent_itemsets import runApriori, preprocessDataset, aprioriout2predicateList
 from recourse_sets import TwoLevelRecourseSet
 from metrics import incorrectRecoursesIfThen
+from formatting import to_bold_str
 
 ## Re-exporting
 from optimization import optimize_vanilla
@@ -247,5 +248,38 @@ def sort_triples_by_max_costdiff(
         ifclause = ifthens[0]
         thenclauses = ifthens[1]
         return max_intergroup_cost_diff(ifclause, thenclauses, **kwargs)
+    ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
+    return ret
+
+def sort_triples_by_max_costdiff_ignore_nans(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    **kwargs
+) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]:
+    def apply_calc(ifthens):
+        ifclause = ifthens[0]
+        thenclauses = ifthens[1]
+        max_costdiff = max_intergroup_cost_diff(ifclause, thenclauses, **kwargs)
+        if np.isnan(max_costdiff):
+            return -np.inf
+        else:
+            return max_costdiff
+    ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
+    return ret
+
+def sort_triples_by_max_costdiff_ignore_nans_infs(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    **kwargs
+) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]:
+    def apply_calc(ifthens):
+        ifclause = ifthens[0]
+        thenclauses = ifthens[1]
+        max_costdiff = max_intergroup_cost_diff(ifclause, thenclauses, **kwargs)
+        if np.isnan(max_costdiff) or np.isinf(max_costdiff):
+            return -np.inf
+        else:
+            return max_costdiff
+    max_diffs = np.array([apply_calc(ifthens) for ifthens in rulesbyif.items()])
+    if np.isinf(max_diffs).all():
+        print(to_bold_str("Dommage monsieur!"))
     ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
     return ret
