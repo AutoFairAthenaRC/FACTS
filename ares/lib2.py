@@ -72,12 +72,19 @@ def global_counterfactuals_threshold(
     
     return ifthens_filtered
 
-def valid_ifthens_with_coverage_correctness(
+
+
+
+
+
+
+
+
+
+def affected_unaffected_split(
     X: DataFrame,
-    model: ModelAPI,
-    sensitive_attribute: str,
-    freqitem_minsupp: float = 0.01
-) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
+    model: ModelAPI
+) -> Tuple[DataFrame, DataFrame]:
     # get model predictions
     preds = model.predict(X)
     # find affected individuals
@@ -87,6 +94,24 @@ def valid_ifthens_with_coverage_correctness(
     # find unaffected individuals
     X_unaff_idxs = np.where(preds == 1)[0]
     X_unaff = X.iloc[X_unaff_idxs, :]
+    
+    return X_aff, X_unaff
+
+def freqitemsets_with_supports(
+    X: DataFrame,
+    min_support: float = 0.001
+) -> Tuple[List[Predicate], List[float]]:
+    ret = aprioriout2predicateList(runApriori(preprocessDataset(X), min_support=min_support))
+    return ret
+
+def valid_ifthens_with_coverage_correctness(
+    X: DataFrame,
+    model: ModelAPI,
+    sensitive_attribute: str,
+    freqitem_minsupp: float = 0.01
+) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
+    # split into affected-unaffected
+    X_aff, X_unaff = affected_unaffected_split(X, model)
 
     # find descriptors of all sensitive subgroups
     subgroups = np.unique(X[sensitive_attribute])
@@ -95,8 +120,7 @@ def valid_ifthens_with_coverage_correctness(
     affected_subgroups = {sg: X_aff[X_aff[sensitive_attribute] == sg].drop([sensitive_attribute], axis=1) for sg in subgroups}
 
     # calculate frequent itemsets for each subgroup and turn them into predicates
-    freq_itemsets = {sg: runApriori(preprocessDataset(affected_sg), min_support=freqitem_minsupp) for sg, affected_sg in affected_subgroups.items()}
-    RLs_and_supports = {sg: aprioriout2predicateList(freq) for sg, freq in freq_itemsets.items()}
+    RLs_and_supports = {sg: freqitemsets_with_supports(affected_sg, min_support=freqitem_minsupp) for sg, affected_sg in affected_subgroups.items()}
 
     # turn RLs into dictionaries for easier comparison
     RLs_supports_dict = {sg: [(dict(zip(p.features, p.values)), supp) for p, supp in zip(*RL_sup)] for sg, RL_sup in RLs_and_supports.items()}
