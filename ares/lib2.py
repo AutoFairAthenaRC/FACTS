@@ -108,8 +108,12 @@ def valid_ifthens_with_coverage_correctness(
     X: DataFrame,
     model: ModelAPI,
     sensitive_attribute: str,
-    freqitem_minsupp: float = 0.01
+    freqitem_minsupp: float = 0.01,
+    missing_subgroup_val: str = "N/A"
 ) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
+    # throw out all individuals for whom the value of the sensitive attribute is unknown
+    X = X[X[sensitive_attribute] != missing_subgroup_val]
+
     # split into affected-unaffected
     X_aff, X_unaff = affected_unaffected_split(X, model)
 
@@ -125,7 +129,7 @@ def valid_ifthens_with_coverage_correctness(
     # turn RLs into dictionaries for easier comparison
     RLs_supports_dict = {sg: [(dict(zip(p.features, p.values)), supp) for p, supp in zip(*RL_sup)] for sg, RL_sup in RLs_and_supports.items()}
 
-    # intersection of frequent itemsets of all sensitive subhgroups
+    # intersection of frequent itemsets of all sensitive subgroups
     if len(RLs_supports_dict) < 1:
         raise ValueError("There must be at least 2 subgroups.")
     else:
@@ -141,7 +145,7 @@ def valid_ifthens_with_coverage_correctness(
     aff_intersection = [(Predicate.from_dict(d), supps) for d, supps in aff_intersection]
     
     # Frequent itemsets for the unaffacted (to be used in the then clauses)
-    freq_unaffected, _ = aprioriout2predicateList(runApriori(preprocessDataset(X_unaff), min_support=freqitem_minsupp))
+    freq_unaffected, _ = freqitemsets_with_supports(X_unaff, min_support=freqitem_minsupp)
 
     # Filter all if-then pairs to keep only valid
     ifthens = [(h, s, ifsupps) for h, ifsupps in aff_intersection for s in freq_unaffected if recIsValid(h, s)]
@@ -152,7 +156,6 @@ def valid_ifthens_with_coverage_correctness(
     for h, s, ifsupps in tqdm(ifthens):
         recourse_correctness = {}
         for sg in subgroups:
-            sd = Predicate.from_dict({sensitive_attribute: sg})
             incorrect_recourses_for_sg = incorrectRecoursesIfThen(h, s, affected_subgroups[sg].assign(**{sensitive_attribute: sg}), model)
             covered_sg = ifsupps[sg] * affected_subgroups[sg].shape[0]
             inc_sg = incorrect_recourses_for_sg / covered_sg
@@ -306,4 +309,20 @@ def sort_triples_by_max_costdiff_ignore_nans_infs(
     if np.isinf(max_diffs).all():
         print(to_bold_str("Dommage monsieur!"))
     ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
+    return ret
+
+
+
+def filter_by_correctness(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    threshold: float = 0.5
+) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]:
+    # ret = {ifclause: {sg: (cov, [(then, cor) for then, cor in thens if cor >= threshold]) for sg, (cov, thens) in thenclauses.items()} for ifclause, thenclauses in rulesbyif.items()}
+    ret = dict()
+    for ifclause, thenclauses in rulesbyif.items():
+        filtered_thenclauses = dict()
+        for sg, (cov, sg_thens) in thenclauses.items():
+            filtered_thens = [(then, cor) for then, cor in sg_thens if cor >= threshold]
+            filtered_thenclauses[sg] = (cov, filtered_thens)
+        ret[ifclause] = filtered_thenclauses
     return ret

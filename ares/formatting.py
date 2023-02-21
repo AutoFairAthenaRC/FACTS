@@ -74,12 +74,12 @@ def to_green_str(s: Any) -> str:
     return f"\033[0;32m{s}\033[0m"
 
 def recourse_report_reverse(
-    rules: List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]],
+    rules: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
     population_sizes: Optional[Dict[str, int]] = None,
     missing_subgroup_val: str = "N/A"
 ) -> str:
     ret = []
-    for ifclause, sg_thens in rules:
+    for ifclause, sg_thens in rules.items():
         ret.append(f"If {to_bold_str(ifclause)}:\n")
         for subgroup, (cov, thens) in sg_thens.items():
             if subgroup == missing_subgroup_val:
