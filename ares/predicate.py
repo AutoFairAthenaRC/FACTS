@@ -34,16 +34,17 @@ class Predicate:
     
     def __hash__(self) -> int:
         return hash(repr(self))
-
+    
     def __str__(self) -> str:
         ret = []
-        boo = True
+        first_iter = True
         for f, v in zip(self.features, self.values):
-            if boo:
-                ret.append(f"{f} = {v}")
-                boo = False
-                continue
-            ret.append(f", {f} = {v}")
+            if first_iter:
+                first_iter = False
+            else:
+                ret.append(", ")
+            
+            ret.append(f"{f} = {v}")
         return "".join(ret)
     
     def __post_init__(self, operators=None):

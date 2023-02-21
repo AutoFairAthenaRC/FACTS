@@ -2,10 +2,12 @@ from typing import List, Dict, Tuple, Any, Optional
 
 from pandas import DataFrame
 
+from colorama import Fore, Style
+
 from models import ModelAPI
 from recourse_sets import TwoLevelRecourseSet
 from metrics import incorrectRecourses, incorrectRecoursesSubmodular, cover, featureChange, featureCost, incorrectRecoursesSingle
-from predicate import Predicate
+from predicate import Predicate, recIsValid
 
 def report_base(outer: List[Predicate], blocks: List) -> str:
     ret = []
@@ -73,6 +75,9 @@ def to_blue_str(s: Any) -> str:
 def to_green_str(s: Any) -> str:
     return f"\033[0;32m{s}\033[0m"
 
+def to_red_str(s: Any) -> str:
+    return f"\033[0;31m{s}\033[0m"
+
 def recourse_report_reverse(
     rules: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
     population_sizes: Optional[Dict[str, int]] = None,
@@ -80,14 +85,13 @@ def recourse_report_reverse(
 ) -> str:
     ret = []
     for ifclause, sg_thens in rules.items():
-        ret.append(f"If {to_bold_str(ifclause)}:\n")
+        ret.append(f"If {Style.BRIGHT}{ifclause}{Style.RESET_ALL}:\n")
         for subgroup, (cov, thens) in sg_thens.items():
             if subgroup == missing_subgroup_val:
                 continue
 
             # print coverage statistics for the subgroup
-            cov_str = to_blue_str(f"{cov:.4%}")
-            ret.append(f"\tSubgroup '{to_bold_str(subgroup)}', {cov_str} covered")
+            ret.append(f"\tSubgroup '{Style.BRIGHT}{subgroup}{Style.RESET_ALL}', {Fore.BLUE}{cov:.4%}{Fore.RESET} covered")
             if population_sizes is not None:
                 if subgroup in population_sizes:
                     ret.append(f" out of {population_sizes[subgroup]}")
@@ -97,7 +101,38 @@ def recourse_report_reverse(
 
             # print each available recourse together with the respective correctness
             for then, correctness in thens:
-                cor_str = to_green_str(f"{correctness:.4%}")
-                ret.append(f"\t\tMake {to_bold_str(then)} with correctness {cor_str}.\n")
+                _, thenstr = ifthen2str(ifclause=ifclause, thenclause=then)
+                cor_str = Fore.GREEN + f"{correctness:.4%}" + Fore.RESET
+                ret.append(f"\t\tMake {Style.BRIGHT}{thenstr}{Style.RESET_ALL} with correctness {cor_str}.\n")
 
     return "".join(ret)
+
+def ifthen2str(
+    ifclause: Predicate,
+    thenclause: Predicate,
+    same_col: str = Fore.BLACK,
+    different_col: str = Fore.RED
+) -> Tuple[str, str]:
+    if not recIsValid(ifclause, thenclause):
+        raise ValueError("If and then clauses should be compatible.")
+    
+    ifstr = []
+    thenstr = []
+    first_rep = True
+    thendict = thenclause.to_dict()
+    for f, v in ifclause.to_dict().items():
+        if first_rep:
+            first_rep = False
+        else:
+            ifstr.append(", ")
+            thenstr.append(", ")
+        
+        if v == thendict[f]:
+            ifstr.append(same_col + f"{f} = {v}" + Fore.RESET)
+            thenstr.append(same_col + f"{f} = {v}" + Fore.RESET)
+        else:
+            ifstr.append(different_col + f"{f} = {v}" + Fore.RESET)
+            thenstr.append(different_col + f"{f} = {thendict[f]}" + Fore.RESET)
+    
+    return "".join(ifstr), "".join(thenstr)
+
