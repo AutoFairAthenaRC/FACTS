@@ -1,10 +1,10 @@
 from pandas import DataFrame
 
-from recourse_sets import TwoLevelRecourseSet
-from models import ModelAPI
-from metrics import incorrectRecourses, cover, featureCost, featureChange
+from .recourse_sets import TwoLevelRecourseSet
+from .models import ModelAPI
+from .metrics import incorrectRecourses, cover, featureCost, featureChange
 
-from parameters import epsilon1, epsilon2, C_max, M_max
+from .parameters import epsilon1, epsilon2, C_max, M_max
 
 def reward1(R: TwoLevelRecourseSet, X_aff: DataFrame, model: ModelAPI) -> float:
     U_1 = len(X_aff) * epsilon1

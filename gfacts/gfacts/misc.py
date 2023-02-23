@@ -4,16 +4,16 @@ import functools
 import numpy as np
 from pandas import DataFrame, Series
 
-from parameters import *
-from models import ModelAPI
-from frequent_itemsets import runApriori, preprocessDataset, aprioriout2predicateList
-from recourse_sets import TwoLevelRecourseSet
-from metrics import incorrectRecoursesIfThen
-from formatting import to_bold_str
+from .parameters import *
+from .models import ModelAPI
+from .frequent_itemsets import runApriori, preprocessDataset, aprioriout2predicateList
+from .recourse_sets import TwoLevelRecourseSet
+from .metrics import incorrectRecoursesIfThen
+from .formatting import to_bold_str
 
 ## Re-exporting
-from optimization import optimize_vanilla
-from predicate import Predicate, recIsValid, featureChangePred
+from .optimization import optimize_vanilla
+from .predicate import Predicate, recIsValid, featureChangePred
 ## Re-exporting
 
 

@@ -4,7 +4,7 @@ from typing import List, Dict, Tuple
 import numpy as np
 from pandas import Series
 
-from predicate import Predicate
+from .predicate import Predicate
 
 @dataclass
 class RecourseSet:

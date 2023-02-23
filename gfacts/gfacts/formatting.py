@@ -4,10 +4,10 @@ from pandas import DataFrame
 
 from colorama import Fore, Style
 
-from models import ModelAPI
-from recourse_sets import TwoLevelRecourseSet
-from metrics import incorrectRecourses, incorrectRecoursesSubmodular, cover, featureChange, featureCost, incorrectRecoursesSingle
-from predicate import Predicate, recIsValid
+from .models import ModelAPI
+from .recourse_sets import TwoLevelRecourseSet
+from .metrics import incorrectRecourses, incorrectRecoursesSubmodular, cover, featureChange, featureCost, incorrectRecoursesSingle
+from .predicate import Predicate, recIsValid
 
 def report_base(outer: List[Predicate], blocks: List) -> str:
     ret = []

@@ -5,7 +5,7 @@ from typing import List, Tuple
 from mlxtend.preprocessing import TransactionEncoder
 from mlxtend.frequent_patterns import fpgrowth
 
-from predicate import Predicate
+from .predicate import Predicate
 
 def preprocessDataset(data: DataFrame) -> DataFrame:
     d = data.copy()

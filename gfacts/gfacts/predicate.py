@@ -3,7 +3,7 @@ from typing import List, Any, Dict
 from enum import Enum
 import operator
 
-from parameters import ParameterProxy
+from .parameters import ParameterProxy
 
 class Operator(Enum):
     EQ = "="

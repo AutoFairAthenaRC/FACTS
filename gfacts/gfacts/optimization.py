@@ -6,10 +6,10 @@ from collections import defaultdict
 import numpy as np
 from pandas import DataFrame
 
-from predicate import Predicate, featureChangePred, featureCostPred, recIsValid
-from models import ModelAPI
-from metrics import incorrectRecoursesSingle
-from parameters import ParameterProxy
+from .predicate import Predicate, featureChangePred, featureCostPred, recIsValid
+from .models import ModelAPI
+from .metrics import incorrectRecoursesSingle
+from .parameters import ParameterProxy
 
 def ground_set_generation_vanilla(SD: List[Predicate], RL: List[Predicate], X_aff: DataFrame, model: ModelAPI):
     valid_triples = [(sd, h, s) for sd in SD for h in RL for s in RL if recIsValid(h, s)]

@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 
-from predicate import Predicate, recIsValid, featureCostPred, featureChangePred
-from models import ModelAPI
-from recourse_sets import TwoLevelRecourseSet
+from .predicate import Predicate, featureCostPred, featureChangePred
+from .models import ModelAPI
+from .recourse_sets import TwoLevelRecourseSet
 
 def recourseAccuracy():
     raise NotImplementedError()
