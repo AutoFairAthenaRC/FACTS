@@ -69,6 +69,14 @@ class Predicate:
     
     def width(self):
         return len(self.features)
+    
+    def contains(self, other: object) -> bool:
+        if not isinstance(other, Predicate):
+            return False
+        
+        d1 = self.to_dict()
+        d2 = other.to_dict()
+        return all(feat in d1 and d1[feat] == val for feat, val in d2.items())
 
 def featureCostPred(p1: Predicate, p2: Predicate, params: ParameterProxy = ParameterProxy()):
     ret = 0
