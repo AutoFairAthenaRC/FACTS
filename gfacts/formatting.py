@@ -78,10 +78,15 @@ def to_green_str(s: Any) -> str:
 def to_red_str(s: Any) -> str:
     return f"\033[0;31m{s}\033[0m"
 
+class ifgroup:
+    ifclause: Predicate
+    allthens: Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]
+
 def recourse_report_reverse(
     rules: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
     population_sizes: Optional[Dict[str, int]] = None,
-    missing_subgroup_val: str = "N/A"
+    missing_subgroup_val: str = "N/A",
+    subgroup_costs: Optional[Dict[Predicate, Dict[str, float]]] = None
 ) -> str:
     ret = []
     for ifclause, sg_thens in rules.items():
@@ -104,6 +109,10 @@ def recourse_report_reverse(
                 _, thenstr = ifthen2str(ifclause=ifclause, thenclause=then)
                 cor_str = Fore.GREEN + f"{correctness:.4%}" + Fore.RESET
                 ret.append(f"\t\tMake {Style.BRIGHT}{thenstr}{Style.RESET_ALL} with correctness {cor_str}.\n")
+
+            if subgroup_costs is not None:
+                cost_of_current_subgroup = subgroup_costs[ifclause][subgroup]
+                ret.append(f"\t\t{Style.BRIGHT}Aggregate cost{Style.RESET_ALL} of the above recourses = {Fore.MAGENTA}{float(cost_of_current_subgroup):.6}{Fore.RESET}\n")
 
     return "".join(ret)
 

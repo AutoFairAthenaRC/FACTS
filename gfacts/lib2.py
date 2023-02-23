@@ -216,13 +216,23 @@ def if_group_cost_max_change_correctness_threshold(
 
 if_group_cost_f_t = Callable[[Predicate, List[Tuple[Predicate, float]]], float]
 
-def calculate_if_group_costs(
+def calculate_if_subgroup_costs(
     ifclause: Predicate,
     thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float]]]],
     group_calculator: if_group_cost_f_t = if_group_cost_mean_with_correctness,
     **kwargs
 ) -> Dict[str, float]:
     return {sg: group_calculator(ifclause, thens, **kwargs) for sg, (_cov, thens) in thenclauses.items()}
+
+def calculate_all_if_subgroup_costs(
+    ifclauses: List[Predicate],
+    all_thenclauses: List[Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    **kwargs
+) -> Dict[Predicate, Dict[str, float]]:
+    ret: Dict[Predicate, Dict[str, float]] = {}
+    for ifclause, thenclauses in zip(ifclauses, all_thenclauses):
+        ret[ifclause] = calculate_if_subgroup_costs(ifclause, thenclauses, **kwargs)
+    return ret
 
 def calculate_cost_difference_2groups(
     ifclause: Predicate,
@@ -231,7 +241,7 @@ def calculate_cost_difference_2groups(
     group2: str = "1",
     params: ParameterProxy = ParameterProxy()
 ) -> float:
-    group_costs = calculate_if_group_costs(ifclause, thenclauses, params=params)
+    group_costs = calculate_if_subgroup_costs(ifclause, thenclauses, params=params)
     return abs(group_costs[group1] - group_costs[group2])
 
 def sort_triples_by_costdiff_2groups(
@@ -264,7 +274,7 @@ def max_intergroup_cost_diff(
     thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float]]]],
     **kwargs
 ) -> float:
-    group_costs = list(calculate_if_group_costs(ifclause, thenclauses, **kwargs).values())
+    group_costs = list(calculate_if_subgroup_costs(ifclause, thenclauses, **kwargs).values())
     return max(group_costs) - min(group_costs)
 
 def sort_triples_by_max_costdiff(
@@ -306,12 +316,12 @@ def sort_triples_by_max_costdiff_ignore_nans_infs(
         else:
             return max_costdiff
     max_diffs = np.array([apply_calc(ifthens) for ifthens in rulesbyif.items()])
+
+    # TODO: change this to something more helpful
     if np.isinf(max_diffs).all():
         print(to_bold_str("Dommage monsieur!"))
     ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
     return ret
-
-
 
 def filter_by_correctness(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
