@@ -199,7 +199,7 @@ def if_group_cost_mean_correctness_weighted(
     corrs = np.array([cor for _, cor in thenclauses])
     return np.average(feature_changes, weights=corrs).astype(float)
 
-def if_group_cost_max_change_correctness_threshold(
+def if_group_cost_recoursesnum_correctness_threshold(
     ifclause: Predicate,
     thenclauses: List[Tuple[Predicate, float]],
     cor_thres: float = 0.5,
@@ -213,6 +213,17 @@ def if_group_cost_max_change_correctness_threshold(
     except ValueError:
         ret = np.inf
     return ret
+
+def if_group_cost_max_change_correctness_threshold(
+    ifclause: Predicate,
+    thenclauses: List[Tuple[Predicate, float]],
+    cor_thres: float = 0.5,
+    params: ParameterProxy = ParameterProxy()
+) -> float:
+    feature_changes = np.array([
+        featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses if cor >= cor_thres
+        ])
+    return feature_changes.size
 
 if_group_cost_f_t = Callable[[Predicate, List[Tuple[Predicate, float]]], float]
 
