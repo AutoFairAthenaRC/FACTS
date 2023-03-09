@@ -119,7 +119,8 @@ def recourse_report_reverse(
 def ifthen2str(
     ifclause: Predicate,
     thenclause: Predicate,
-    same_col: str = Fore.BLACK,
+    show_same_feats: bool = False,
+    same_col: str = "default",
     different_col: str = Fore.RED
 ) -> Tuple[str, str]:
     if not recIsValid(ifclause, thenclause):
@@ -130,6 +131,9 @@ def ifthen2str(
     first_rep = True
     thendict = thenclause.to_dict()
     for f, v in ifclause.to_dict().items():
+        if not show_same_feats and v == thendict[f]:
+            continue
+
         if first_rep:
             first_rep = False
         else:
@@ -137,8 +141,12 @@ def ifthen2str(
             thenstr.append(", ")
         
         if v == thendict[f]:
-            ifstr.append(same_col + f"{f} = {v}" + Fore.RESET)
-            thenstr.append(same_col + f"{f} = {v}" + Fore.RESET)
+            if same_col != "default":
+                ifstr.append(same_col + f"{f} = {v}" + Fore.RESET)
+                thenstr.append(same_col + f"{f} = {v}" + Fore.RESET)
+            else:
+                ifstr.append(f"{f} = {v}")
+                thenstr.append(f"{f} = {v}")
         else:
             ifstr.append(different_col + f"{f} = {v}" + Fore.RESET)
             thenstr.append(different_col + f"{f} = {thendict[f]}" + Fore.RESET)
