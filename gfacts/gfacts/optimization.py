@@ -8,8 +8,10 @@ from pandas import DataFrame
 
 from .predicate import Predicate, featureChangePred, featureCostPred, recIsValid
 from .models import ModelAPI
-from .metrics import incorrectRecoursesSingle
+from .metrics import incorrectRecoursesSingle, calculate_cost_difference_2groups, max_intergroup_cost_diff
 from .parameters import ParameterProxy
+
+##### Submodular optimization as described in AReS paper.
 
 def ground_set_generation_vanilla(SD: List[Predicate], RL: List[Predicate], X_aff: DataFrame, model: ModelAPI):
     valid_triples = [(sd, h, s) for sd in SD for h in RL for s in RL if recIsValid(h, s)]
@@ -161,24 +163,60 @@ def optimize(
     final_feature_change = sum([all_feature_changes[i] for i in best_subset])
     return [all_triples[i] for i in best_subset], final_incorrects, final_coverage, final_feature_cost, final_feature_change
 
-def optimize_sameif(
-    SD: List[Predicate],
-    ifs: List[Predicate],
-    thens: Dict[str, List[Predicate]],
-    X_aff: DataFrame,
-    model: ModelAPI,
+
+##### Rankings of if-groups
+
+def sort_triples_by_costdiff_2groups(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    group1: str = "0",
+    group2: str = "1",
     params: ParameterProxy = ParameterProxy()
-) -> List[Tuple[Predicate, Predicate, Predicate]]:
-    sensitive_attr_values = [sd.values[0] for sd in SD]
-    atoms = []
-    print(thens.items())
-    for ifclause in ifs:
-        for thenlist in itertools.product(*list(thens.items())):
-            print(thenlist)
-            if all(recIsValid(ifclause, thenclause) for _, thenclause in thenlist):
-                atoms.append((ifclause, dict(thenlist)))
-    print(len(atoms))
+) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]:
+    def apply_calc(ifthens):
+        return calculate_cost_difference_2groups(ifthens[0], ifthens[1], group1, group2, params)
+    ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
+    return ret
 
-    raise NotImplementedError
+def sort_triples_by_max_costdiff(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    **kwargs
+) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]:
+    def apply_calc(ifthens):
+        ifclause = ifthens[0]
+        thenclauses = ifthens[1]
+        return max_intergroup_cost_diff(ifclause, thenclauses, **kwargs)
+    ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
+    return ret
 
+def sort_triples_by_max_costdiff_ignore_nans(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    **kwargs
+) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]:
+    def apply_calc(ifthens):
+        ifclause = ifthens[0]
+        thenclauses = ifthens[1]
+        max_costdiff = max_intergroup_cost_diff(ifclause, thenclauses, **kwargs)
+        if np.isnan(max_costdiff):
+            return -np.inf
+        else:
+            return max_costdiff
+    ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
+    return ret
+
+def sort_triples_by_max_costdiff_ignore_nans_infs(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    **kwargs
+) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]:
+    def apply_calc(ifthens):
+        ifclause = ifthens[0]
+        thenclauses = ifthens[1]
+        max_costdiff = max_intergroup_cost_diff(ifclause, thenclauses, **kwargs)
+        if np.isnan(max_costdiff) or np.isinf(max_costdiff):
+            return -np.inf
+        else:
+            return max_costdiff
+    max_diffs = np.array([apply_calc(ifthens) for ifthens in rulesbyif.items()])
+
+    ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
+    return ret
 

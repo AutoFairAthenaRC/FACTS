@@ -1,4 +1,4 @@
-from typing import Union
+from typing import List, Tuple, Dict, Callable
 
 import numpy as np
 import pandas as pd
@@ -7,9 +7,9 @@ from pandas import DataFrame
 from .predicate import Predicate, featureCostPred, featureChangePred
 from .models import ModelAPI
 from .recourse_sets import TwoLevelRecourseSet
+from .parameters import ParameterProxy
 
-def recourseAccuracy():
-    raise NotImplementedError()
+##### Metrics as guided by AReS paper.
 
 def incorrectRecoursesIfThen(ifclause: Predicate, thenclause: Predicate, X_aff: DataFrame, model: ModelAPI) -> int:
     X_aff_covered_bool = (X_aff[ifclause.features] == ifclause.values).all(axis=1)
@@ -88,3 +88,90 @@ def numrsets(R: TwoLevelRecourseSet):
     return len(R.values)
 
 
+##### Cost metrics for a group of one if (i.e. one subpopulation) and several recourses
+
+def if_group_cost_mean_with_correctness(
+    ifclause: Predicate,
+    thenclauses: List[Tuple[Predicate, float]],
+    params: ParameterProxy = ParameterProxy()
+) -> float:
+    return np.mean([cor * featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses]).astype(float)
+
+def if_group_cost_mean_correctness_weighted(
+    ifclause: Predicate,
+    thenclauses: List[Tuple[Predicate, float]],
+    params: ParameterProxy = ParameterProxy()
+) -> float:
+    feature_changes = np.array([featureChangePred(ifclause, thenclause, params=params) for thenclause, _ in thenclauses])
+    corrs = np.array([cor for _, cor in thenclauses])
+    return np.average(feature_changes, weights=corrs).astype(float)
+
+def if_group_cost_min_change_correctness_threshold(
+    ifclause: Predicate,
+    thenclauses: List[Tuple[Predicate, float]],
+    cor_thres: float = 0.5,
+    params: ParameterProxy = ParameterProxy()
+) -> float:
+    feature_changes = np.array([
+        featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses if cor >= cor_thres
+        ])
+    try:
+        ret = feature_changes.min()
+    except ValueError:
+        ret = np.inf
+    return ret
+
+def if_group_cost_recoursesnum_correctness_threshold(
+    ifclause: Predicate,
+    thenclauses: List[Tuple[Predicate, float]],
+    cor_thres: float = 0.5,
+    params: ParameterProxy = ParameterProxy()
+) -> float:
+    feature_changes = np.array([
+        featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses if cor >= cor_thres
+        ])
+    return feature_changes.size
+
+
+##### Aggregations of if-group cost for all subgroups and for all if-groups in a list
+
+if_group_cost_f_t = Callable[[Predicate, List[Tuple[Predicate, float]]], float]
+
+def calculate_if_subgroup_costs(
+    ifclause: Predicate,
+    thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float]]]],
+    group_calculator: if_group_cost_f_t = if_group_cost_mean_with_correctness,
+    **kwargs
+) -> Dict[str, float]:
+    return {sg: group_calculator(ifclause, thens, **kwargs) for sg, (_cov, thens) in thenclauses.items()}
+
+def calculate_all_if_subgroup_costs(
+    ifclauses: List[Predicate],
+    all_thenclauses: List[Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    **kwargs
+) -> Dict[Predicate, Dict[str, float]]:
+    ret: Dict[Predicate, Dict[str, float]] = {}
+    for ifclause, thenclauses in zip(ifclauses, all_thenclauses):
+        ret[ifclause] = calculate_if_subgroup_costs(ifclause, thenclauses, **kwargs)
+    return ret
+
+
+##### Calculations of discrepancies between the costs of different subgroups (for the same if-group)
+
+def calculate_cost_difference_2groups(
+    ifclause: Predicate,
+    thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float]]]],
+    group1: str = "0",
+    group2: str = "1",
+    params: ParameterProxy = ParameterProxy()
+) -> float:
+    group_costs = calculate_if_subgroup_costs(ifclause, thenclauses, params=params)
+    return abs(group_costs[group1] - group_costs[group2])
+
+def max_intergroup_cost_diff(
+    ifclause: Predicate,
+    thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float]]]],
+    **kwargs
+) -> float:
+    group_costs = list(calculate_if_subgroup_costs(ifclause, thenclauses, **kwargs).values())
+    return max(group_costs) - min(group_costs)

@@ -8,6 +8,7 @@ from .models import ModelAPI
 from .recourse_sets import TwoLevelRecourseSet
 from .metrics import incorrectRecourses, incorrectRecoursesSubmodular, cover, featureChange, featureCost, incorrectRecoursesSingle
 from .predicate import Predicate, recIsValid
+from .rule_filters import filter_contained_rules
 
 def report_base(outer: List[Predicate], blocks: List) -> str:
     ret = []
@@ -86,8 +87,13 @@ def recourse_report_reverse(
     rules: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
     population_sizes: Optional[Dict[str, int]] = None,
     missing_subgroup_val: str = "N/A",
-    subgroup_costs: Optional[Dict[Predicate, Dict[str, float]]] = None
+    subgroup_costs: Optional[Dict[Predicate, Dict[str, float]]] = None,
+    filtering: Optional[str] = None
 ) -> str:
+    # perform filtering first
+    if filtering == "remove-contained":
+        rules = filter_contained_rules(rules)
+
     ret = []
     for ifclause, sg_thens in rules.items():
         ret.append(f"If {Style.BRIGHT}{ifclause}{Style.RESET_ALL}:\n")

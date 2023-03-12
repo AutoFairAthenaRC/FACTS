@@ -1,3 +1,4 @@
+from tqdm import tqdm
 from typing import List, Tuple, Dict
 import functools
 
@@ -6,14 +7,27 @@ from pandas import DataFrame, Series
 
 from .parameters import *
 from .models import ModelAPI
+from .predicate import Predicate, recIsValid, featureChangePred
 from .frequent_itemsets import runApriori, preprocessDataset, aprioriout2predicateList
 from .recourse_sets import TwoLevelRecourseSet
+from .optimization import optimize_vanilla
 from .metrics import incorrectRecoursesIfThen
-from .formatting import to_bold_str
+
+import matplotlib.pyplot as plt
 
 ## Re-exporting
-from .optimization import optimize_vanilla
-from .predicate import Predicate, recIsValid, featureChangePred
+from .optimization import (
+    sort_triples_by_max_costdiff,
+    sort_triples_by_max_costdiff_ignore_nans,
+    sort_triples_by_max_costdiff_ignore_nans_infs
+)
+from .metrics import (
+    calculate_all_if_subgroup_costs,
+    if_group_cost_mean_with_correctness,
+    if_group_cost_min_change_correctness_threshold,
+    if_group_cost_recoursesnum_correctness_threshold
+)
+from .rule_filters import filter_by_correctness, filter_contained_rules
 ## Re-exporting
 
 
@@ -41,15 +55,6 @@ def global_counterfactuals_ares(X: DataFrame, model: ModelAPI, sensitive_attribu
     final_rules = optimize_vanilla(SD, ifthen_triples, affected_sample, model)
 
     return TwoLevelRecourseSet.from_triples(final_rules[0])
-
-def intersect_predicate_lists(acc: List[Tuple[Dict[Any, Any], Dict[str, float]]], l2: List[Tuple[Dict[Any, Any], float]], l2_sg: str):
-    ret = []
-    for i, (pred1, supps) in enumerate(acc):
-        for j, (pred2, supp2) in enumerate(l2):
-            if pred1 == pred2:
-                supps[l2_sg] = supp2
-                ret.append((pred1, supps))
-    return ret
 
 def global_counterfactuals_threshold(
     X: DataFrame, model: ModelAPI,
@@ -80,6 +85,14 @@ def global_counterfactuals_threshold(
 
 
 
+def intersect_predicate_lists(acc: List[Tuple[Dict[Any, Any], Dict[str, float]]], l2: List[Tuple[Dict[Any, Any], float]], l2_sg: str):
+    ret = []
+    for i, (pred1, supps) in enumerate(acc):
+        for j, (pred2, supp2) in enumerate(l2):
+            if pred1 == pred2:
+                supps[l2_sg] = supp2
+                ret.append((pred1, supps))
+    return ret
 
 def affected_unaffected_split(
     X: DataFrame,
@@ -103,6 +116,26 @@ def freqitemsets_with_supports(
 ) -> Tuple[List[Predicate], List[float]]:
     ret = aprioriout2predicateList(runApriori(preprocessDataset(X), min_support=min_support))
     return ret
+
+def calculate_correctnesses(
+        ifthens_withsupp: List[Tuple[Predicate, Predicate, Dict[str, float]]],
+        affected_by_subgroup: Dict[str, DataFrame],
+        sensitive_attribute: str,
+        model: ModelAPI
+) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
+    subgroup_names = list(affected_by_subgroup.keys())
+    ifthens_with_correctness = []
+    for h, s, ifsupps in tqdm(ifthens_withsupp):
+        recourse_correctness = {}
+        for sg in subgroup_names:
+            incorrect_recourses_for_sg = incorrectRecoursesIfThen(h, s, affected_by_subgroup[sg].assign(**{sensitive_attribute: sg}), model)
+            covered_sg = ifsupps[sg] * affected_by_subgroup[sg].shape[0]
+            inc_sg = incorrect_recourses_for_sg / covered_sg
+            recourse_correctness[sg] = 1 - inc_sg
+
+        ifthens_with_correctness.append((h, s, ifsupps, recourse_correctness))
+    
+    return ifthens_with_correctness
 
 def valid_ifthens_with_coverage_correctness(
     X: DataFrame,
@@ -148,21 +181,11 @@ def valid_ifthens_with_coverage_correctness(
     freq_unaffected, _ = freqitemsets_with_supports(X_unaff, min_support=freqitem_minsupp)
 
     # Filter all if-then pairs to keep only valid
-    ifthens = [(h, s, ifsupps) for h, ifsupps in aff_intersection for s in freq_unaffected if recIsValid(h, s)]
+    ifthens = [(h, s, ifsupps) for h, ifsupps in tqdm(aff_intersection) for s in freq_unaffected if recIsValid(h, s)]
 
     # Calculate incorrectness percentages
-    from tqdm import tqdm
-    ifthens_with_correctness = []
-    for h, s, ifsupps in tqdm(ifthens):
-        recourse_correctness = {}
-        for sg in subgroups:
-            incorrect_recourses_for_sg = incorrectRecoursesIfThen(h, s, affected_subgroups[sg].assign(**{sensitive_attribute: sg}), model)
-            covered_sg = ifsupps[sg] * affected_subgroups[sg].shape[0]
-            inc_sg = incorrect_recourses_for_sg / covered_sg
-            recourse_correctness[sg] = 1 - inc_sg
+    ifthens_with_correctness = calculate_correctnesses(ifthens, affected_subgroups, sensitive_attribute, model)
 
-        ifthens_with_correctness.append((h, s, ifsupps, recourse_correctness))
-    
     return ifthens_with_correctness
 
 def rules2rulesbyif(rules: List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]
@@ -183,189 +206,57 @@ def rules2rulesbyif(rules: List[Tuple[Predicate, Predicate, Dict[str, float], Di
 
 
 
-def if_group_cost_mean_with_correctness(
+
+
+
+
+
+
+def sort_thens_by_cost(
     ifclause: Predicate,
     thenclauses: List[Tuple[Predicate, float]],
     params: ParameterProxy = ParameterProxy()
-) -> float:
-    return np.mean([cor * featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses]).astype(float)
+) -> List[Tuple[Predicate, float, float]]:
+    withcosts = [(thenclause, cor, float(featureChangePred(ifclause, thenclause, params))) for thenclause, cor in thenclauses]
+    thens_sorted_by_cost = sorted(withcosts, key=lambda c: (c[2], -c[1]))
+    return thens_sorted_by_cost
 
-def if_group_cost_mean_correctness_weighted(
+def cumcorr(
     ifclause: Predicate,
     thenclauses: List[Tuple[Predicate, float]],
+    X: DataFrame,
+    model: ModelAPI,
     params: ParameterProxy = ParameterProxy()
-) -> float:
-    feature_changes = np.array([featureChangePred(ifclause, thenclause, params=params) for thenclause, _ in thenclauses])
-    corrs = np.array([cor for _, cor in thenclauses])
-    return np.average(feature_changes, weights=corrs).astype(float)
+) -> List[Tuple[Predicate, float, float]]:
+    withcosts = [(thenclause, cor, featureChangePred(ifclause, thenclause, params)) for thenclause, cor in thenclauses]
+    thens_sorted_by_cost = sorted(withcosts, key=lambda c: c[2])
 
-def if_group_cost_min_change_correctness_threshold(
-    ifclause: Predicate,
-    thenclauses: List[Tuple[Predicate, float]],
-    cor_thres: float = 0.5,
-    params: ParameterProxy = ParameterProxy()
-) -> float:
-    feature_changes = np.array([
-        featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses if cor >= cor_thres
-        ])
-    try:
-        ret = feature_changes.min()
-    except ValueError:
-        ret = np.inf
-    return ret
+    X_covered_bool = (X[ifclause.features] == ifclause.values).all(axis=1)
+    X_covered = X[X_covered_bool]
+    covered_count = X_covered.shape[0]
 
-def if_group_cost_recoursesnum_correctness_threshold(
-    ifclause: Predicate,
-    thenclauses: List[Tuple[Predicate, float]],
-    cor_thres: float = 0.5,
-    params: ParameterProxy = ParameterProxy()
-) -> float:
-    feature_changes = np.array([
-        featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses if cor >= cor_thres
-        ])
-    return feature_changes.size
+    cumcorrs = []
+    for thenclause, _cor, _cost in thens_sorted_by_cost:
+        X_temp = X_covered.copy()
+        X_temp[thenclause.features] = thenclause.values
+        preds = model.predict(X_temp)
 
-if_group_cost_f_t = Callable[[Predicate, List[Tuple[Predicate, float]]], float]
+        corrected_count = np.sum(preds)
+        cumcorrs.append(corrected_count)
+        X_covered = X_covered[~ preds.astype(bool)] # type: ignore
 
-def calculate_if_subgroup_costs(
-    ifclause: Predicate,
-    thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float]]]],
-    group_calculator: if_group_cost_f_t = if_group_cost_mean_with_correctness,
-    **kwargs
-) -> Dict[str, float]:
-    return {sg: group_calculator(ifclause, thens, **kwargs) for sg, (_cov, thens) in thenclauses.items()}
+    cumcorrs = np.array(cumcorrs).cumsum() / covered_count
+    print(f"{cumcorrs=}")
+    updated_thens = [(thenclause, cumcor, float(cost)) for (thenclause, _cor, cost), cumcor in zip(thens_sorted_by_cost, cumcorrs)]
 
-def calculate_all_if_subgroup_costs(
-    ifclauses: List[Predicate],
-    all_thenclauses: List[Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
-    **kwargs
-) -> Dict[Predicate, Dict[str, float]]:
-    ret: Dict[Predicate, Dict[str, float]] = {}
-    for ifclause, thenclauses in zip(ifclauses, all_thenclauses):
-        ret[ifclause] = calculate_if_subgroup_costs(ifclause, thenclauses, **kwargs)
-    return ret
+    return updated_thens
 
-def calculate_cost_difference_2groups(
-    ifclause: Predicate,
-    thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float]]]],
-    group1: str = "0",
-    group2: str = "1",
-    params: ParameterProxy = ParameterProxy()
-) -> float:
-    group_costs = calculate_if_subgroup_costs(ifclause, thenclauses, params=params)
-    return abs(group_costs[group1] - group_costs[group2])
-
-def sort_triples_by_costdiff_2groups(
-    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
-    group1: str = "0",
-    group2: str = "1",
-    params: ParameterProxy = ParameterProxy()
-) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]:
-    def apply_calc(ifthens):
-        return calculate_cost_difference_2groups(ifthens[0], ifthens[1], group1, group2, params)
-    ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
-    return ret
-
-def naive_feature_change_builder(
-    num_cols: List[str],
-    cate_cols: List[str],
-    feature_weights: Dict[str, int],
-) -> Dict[str, Callable[[Any, Any], int]]:
-    def feature_change_cate(v1, v2, weight):
-        return (0 if v1 == v2 else 1) * weight
-    def feature_change_num(v1, v2, weight):
-        return abs(v1 - v2) * weight
-    
-    ret_cate = {col: functools.partial(feature_change_cate, weight=feature_weights.get(col, 1)) for col in cate_cols}
-    ret_num = {col: functools.partial(feature_change_num, weight=feature_weights.get(col, 1)) for col in num_cols}
-    return {**ret_cate, **ret_num}
-
-def max_intergroup_cost_diff(
-    ifclause: Predicate,
-    thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float]]]],
-    **kwargs
-) -> float:
-    group_costs = list(calculate_if_subgroup_costs(ifclause, thenclauses, **kwargs).values())
-    return max(group_costs) - min(group_costs)
-
-def sort_triples_by_max_costdiff(
-    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
-    **kwargs
-) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]:
-    def apply_calc(ifthens):
-        ifclause = ifthens[0]
-        thenclauses = ifthens[1]
-        return max_intergroup_cost_diff(ifclause, thenclauses, **kwargs)
-    ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
-    return ret
-
-def sort_triples_by_max_costdiff_ignore_nans(
-    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
-    **kwargs
-) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]:
-    def apply_calc(ifthens):
-        ifclause = ifthens[0]
-        thenclauses = ifthens[1]
-        max_costdiff = max_intergroup_cost_diff(ifclause, thenclauses, **kwargs)
-        if np.isnan(max_costdiff):
-            return -np.inf
-        else:
-            return max_costdiff
-    ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
-    return ret
-
-def sort_triples_by_max_costdiff_ignore_nans_infs(
-    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
-    **kwargs
-) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]:
-    def apply_calc(ifthens):
-        ifclause = ifthens[0]
-        thenclauses = ifthens[1]
-        max_costdiff = max_intergroup_cost_diff(ifclause, thenclauses, **kwargs)
-        if np.isnan(max_costdiff) or np.isinf(max_costdiff):
-            return -np.inf
-        else:
-            return max_costdiff
-    max_diffs = np.array([apply_calc(ifthens) for ifthens in rulesbyif.items()])
-
-    # TODO: change this to something more helpful
-    if np.isinf(max_diffs).all():
-        print(to_bold_str("Dommage monsieur!"))
-    ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
-    return ret
-
-def filter_by_correctness(
-    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
-    threshold: float = 0.5
-) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]:
-    # ret = {ifclause: {sg: (cov, [(then, cor) for then, cor in thens if cor >= threshold]) for sg, (cov, thens) in thenclauses.items()} for ifclause, thenclauses in rulesbyif.items()}
-    ret = dict()
-    for ifclause, thenclauses in rulesbyif.items():
-        filtered_thenclauses = dict()
-        for sg, (cov, sg_thens) in thenclauses.items():
-            filtered_thens = [(then, cor) for then, cor in sg_thens if cor >= threshold]
-            filtered_thenclauses[sg] = (cov, filtered_thens)
-        ret[ifclause] = filtered_thenclauses
-    return ret
-
-def filter_contained_rules(
-    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
-    threshold: float = 0.5
-) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]:
-    ret = dict()
-    for ifclause, thenclauses in rulesbyif.items():
-        flag_keep = True
-        allthens = [then for _sg, (_cov, sg_thens) in thenclauses.items() for then, _cor in sg_thens]
-        for otherif, _ in rulesbyif.items():
-            if not ifclause.contains(otherif):
-                continue
-            extra_features = list(set(ifclause.features) - set(otherif.features))
-            if len(extra_features) == 0:
-                continue
-            allthens_relevant_values = [tuple(then.to_dict()[feat] for feat in extra_features) for then in allthens]
-            if Series(allthens_relevant_values).unique().size == 1:
-                flag_keep = False
-
-        if flag_keep:
-            ret[ifclause] = thenclauses
-    return ret
+def create_correctness_plot(
+    costs: List[float],
+    correctnesses: List[float]
+):
+    fig, ax = plt.subplots()
+    ax.plot(costs, correctnesses)
+    ax.set_xlabel("Cost of change")
+    ax.set_ylabel("Correctness percentage")
+    return fig

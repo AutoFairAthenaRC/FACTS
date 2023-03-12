@@ -1,4 +1,5 @@
-from typing import Dict, Callable, Any
+from typing import Dict, Callable, Any, List
+import functools
 from collections import defaultdict
 from dataclasses import dataclass, field
 
@@ -10,6 +11,20 @@ def default_change(v1, v2):
 
 def make_default_featureChanges():
     return defaultdict(lambda: default_change)
+
+def naive_feature_change_builder(
+    num_cols: List[str],
+    cate_cols: List[str],
+    feature_weights: Dict[str, int],
+) -> Dict[str, Callable[[Any, Any], int]]:
+    def feature_change_cate(v1, v2, weight):
+        return (0 if v1 == v2 else 1) * weight
+    def feature_change_num(v1, v2, weight):
+        return abs(v1 - v2) * weight
+    
+    ret_cate = {col: functools.partial(feature_change_cate, weight=feature_weights.get(col, 1)) for col in cate_cols}
+    ret_num = {col: functools.partial(feature_change_num, weight=feature_weights.get(col, 1)) for col in num_cols}
+    return {**ret_cate, **ret_num}
 
 @dataclass
 class ParameterProxy:
