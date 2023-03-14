@@ -121,7 +121,22 @@ def if_group_cost_min_change_correctness_threshold(
         ret = np.inf
     return ret
 
-def if_group_cost_recoursesnum_correctness_threshold(
+def if_group_cost_sum_change_correctness_threshold(
+    ifclause: Predicate,
+    thenclauses: List[Tuple[Predicate, float]],
+    cor_thres: float = 0.5,
+    params: ParameterProxy = ParameterProxy()
+) -> float:
+    feature_changes = np.array([
+        featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses if cor >= cor_thres
+        ])
+    if feature_changes.size > 0:
+        ret = feature_changes.sum()
+    else:
+        ret = np.inf
+    return ret
+
+def if_group_cost_recoursescount_correctness_threshold(
     ifclause: Predicate,
     thenclauses: List[Tuple[Predicate, float]],
     cor_thres: float = 0.5,

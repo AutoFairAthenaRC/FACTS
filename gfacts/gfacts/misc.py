@@ -1,5 +1,5 @@
 from tqdm import tqdm
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
 import functools
 
 import numpy as np
@@ -25,7 +25,8 @@ from .metrics import (
     calculate_all_if_subgroup_costs,
     if_group_cost_mean_with_correctness,
     if_group_cost_min_change_correctness_threshold,
-    if_group_cost_recoursesnum_correctness_threshold
+    if_group_cost_sum_change_correctness_threshold,
+    if_group_cost_recoursescount_correctness_threshold
 )
 from .rule_filters import filter_by_correctness, filter_contained_rules
 ## Re-exporting
@@ -203,7 +204,44 @@ def rules2rulesbyif(rules: List[Tuple[Predicate, Predicate, Dict[str, float], Di
 
 
 
+def select_rules_subset(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    metric: str = "weighted-average",
+    sort_strategy: str = "abs-diff-decr",
+    top_count: int = 10,
+    filter_sequence: Optional[List[str]] = None,
+    cor_threshold: float = 0.5,
+    params: ParameterProxy = ParameterProxy()
+) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]:
+    # step 1: sort according to metric
+    metrics = {
+        "weighted-average": if_group_cost_mean_with_correctness,
+        "min-above-thr": functools.partial(if_group_cost_min_change_correctness_threshold, cor_thres=cor_threshold),
+        "total-above-thr": functools.partial(if_group_cost_sum_change_correctness_threshold, cor_thres=cor_threshold),
+        "num-above-thr": functools.partial(if_group_cost_recoursescount_correctness_threshold, cor_thres=cor_threshold)
+    }
+    sorting_functions = {
+        "abs-diff-decr": sort_triples_by_max_costdiff,
+        "abs-diff-decr-ignore-forall-subgroups-empty": sort_triples_by_max_costdiff_ignore_nans,
+        "abs-diff-decr-ignore-exists-subgroup-empty": sort_triples_by_max_costdiff_ignore_nans_infs
+    }
+    metric_fn = metrics[metric]
+    sort_fn = sorting_functions[sort_strategy]
+    rules_sorted = sort_fn(rulesbyif, group_calculator=metric_fn, params=params)
 
+    # step 2: keep only top k rules
+    top_rules = dict(rules_sorted[:top_count])
+
+    # step 3 (optional): filtering
+    filters = {
+        "remove-contained": filter_contained_rules,
+        "remove-below-thr": functools.partial(filter_by_correctness, threshold=cor_threshold)
+    }
+    if filter_sequence is not None:
+        for filter in filter_sequence:
+            top_rules = filters[filter](top_rules)
+
+    return top_rules
 
 
 
