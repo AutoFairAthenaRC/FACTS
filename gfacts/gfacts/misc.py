@@ -157,19 +157,21 @@ def valid_ifthens_with_coverage_correctness(
     affected_subgroups = {sg: X_aff[X_aff[sensitive_attribute] == sg].drop([sensitive_attribute], axis=1) for sg in subgroups}
 
     # calculate frequent itemsets for each subgroup and turn them into predicates
-    RLs_and_supports = {sg: freqitemsets_with_supports(affected_sg, min_support=freqitem_minsupp) for sg, affected_sg in affected_subgroups.items()}
+    print("Computing frequent itemsets for each subgroup of the affected instances.",flush=True)
+    RLs_and_supports = {sg: freqitemsets_with_supports(affected_sg, min_support=freqitem_minsupp) for sg, affected_sg in tqdm(affected_subgroups.items())}
 
     # turn RLs into dictionaries for easier comparison
     RLs_supports_dict = {sg: [(dict(zip(p.features, p.values)), supp) for p, supp in zip(*RL_sup)] for sg, RL_sup in RLs_and_supports.items()}
 
     # intersection of frequent itemsets of all sensitive subgroups
+    print("Computing the intersection between the frequent itemsets of each subgroup of the affected instances.",flush=True)
     if len(RLs_supports_dict) < 1:
         raise ValueError("There must be at least 2 subgroups.")
     else:
         sg = subgroups[0]
         RLs_supports = RLs_supports_dict[sg]
         aff_intersection = [(d, {sg: supp}) for d, supp in RLs_supports]
-    for sg, RLs in RLs_supports_dict.items():
+    for sg, RLs in tqdm(RLs_supports_dict.items()):
         if sg == subgroups[0]:
             continue
 
@@ -181,9 +183,11 @@ def valid_ifthens_with_coverage_correctness(
     freq_unaffected, _ = freqitemsets_with_supports(X_unaff, min_support=freqitem_minsupp)
 
     # Filter all if-then pairs to keep only valid
+    print("Computing all valid if-then pairs between the common frequent itemsets of each subgroup of the affected instances and the frequent itemsets of the unaffacted instances.",flush=True)
     ifthens = [(h, s, ifsupps) for h, ifsupps in tqdm(aff_intersection) for s in freq_unaffected if recIsValid(h, s)]
 
     # Calculate incorrectness percentages
+    print("Computing correctenesses for all valid if-thens.",flush=True)
     ifthens_with_correctness = calculate_correctnesses(ifthens, affected_subgroups, sensitive_attribute, model)
 
     return ifthens_with_correctness
