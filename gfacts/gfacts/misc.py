@@ -3,32 +3,31 @@ from typing import List, Tuple, Dict, Optional
 import functools
 
 import numpy as np
-from pandas import DataFrame, Series
+from pandas import DataFrame
 
 from .parameters import *
 from .models import ModelAPI
 from .predicate import Predicate, recIsValid, featureChangePred
 from .frequent_itemsets import runApriori, preprocessDataset, aprioriout2predicateList
 from .recourse_sets import TwoLevelRecourseSet
-from .optimization import optimize_vanilla
-from .metrics import incorrectRecoursesIfThen
-
-import matplotlib.pyplot as plt
-
-## Re-exporting
-from .optimization import (
-    sort_triples_by_max_costdiff,
-    sort_triples_by_max_costdiff_ignore_nans,
-    sort_triples_by_max_costdiff_ignore_nans_infs
-)
 from .metrics import (
-    calculate_all_if_subgroup_costs,
+    incorrectRecoursesIfThen,
     if_group_cost_mean_with_correctness,
     if_group_cost_min_change_correctness_threshold,
     if_group_cost_sum_change_correctness_threshold,
     if_group_cost_recoursescount_correctness_threshold
 )
+from .optimization import (
+    optimize_vanilla,
+    sort_triples_by_max_costdiff,
+    sort_triples_by_max_costdiff_ignore_nans,
+    sort_triples_by_max_costdiff_ignore_nans_infs
+)
 from .rule_filters import filter_by_correctness, filter_contained_rules
+
+## Re-exporting
+from .metrics import calculate_all_if_subgroup_costs
+from .formatting import plot_aggregate_correctness
 ## Re-exporting
 
 
@@ -265,7 +264,7 @@ def cumcorr(
     X: DataFrame,
     model: ModelAPI,
     params: ParameterProxy = ParameterProxy()
-) -> List[Tuple[Predicate, float, float]]:
+) -> List[Tuple[float, float]]:
     withcosts = [(thenclause, cor, featureChangePred(ifclause, thenclause, params)) for thenclause, cor in thenclauses]
     thens_sorted_by_cost = sorted(withcosts, key=lambda c: c[2])
 
@@ -275,6 +274,9 @@ def cumcorr(
 
     cumcorrs = []
     for thenclause, _cor, _cost in thens_sorted_by_cost:
+        if X_covered.shape[0] == 0:
+            cumcorrs.append(0)
+            continue
         X_temp = X_covered.copy()
         X_temp[thenclause.features] = thenclause.values
         preds = model.predict(X_temp)
@@ -284,17 +286,24 @@ def cumcorr(
         X_covered = X_covered[~ preds.astype(bool)] # type: ignore
 
     cumcorrs = np.array(cumcorrs).cumsum() / covered_count
-    print(f"{cumcorrs=}")
-    updated_thens = [(thenclause, cumcor, float(cost)) for (thenclause, _cor, cost), cumcor in zip(thens_sorted_by_cost, cumcorrs)]
+    updated_thens = [(cumcor, float(cost)) for (_thenclause, _cor, cost), cumcor in zip(thens_sorted_by_cost, cumcorrs)]
 
     return updated_thens
 
-def create_correctness_plot(
-    costs: List[float],
-    correctnesses: List[float]
-):
-    fig, ax = plt.subplots()
-    ax.plot(costs, correctnesses)
-    ax.set_xlabel("Cost of change")
-    ax.set_ylabel("Correctness percentage")
-    return fig
+def cumcorr_all(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    X: DataFrame,
+    model: ModelAPI,
+    sensitive_attribute: str,
+    params: ParameterProxy = ParameterProxy()
+) -> Dict[Predicate, Dict[str, List[Tuple[float, float]]]]:
+    X_affected: DataFrame = X[model.predict(X) == 0] # type: ignore
+    ret = {}
+    for ifclause, all_thens in rulesbyif.items():
+       all_thens_new = {}
+       for sg, (_cov, thens) in all_thens.items():
+           subgroup_affected = X_affected[X_affected[sensitive_attribute] == sg]
+           all_thens_new[sg] = cumcorr(ifclause, thens, subgroup_affected, model, params=params)
+       ret[ifclause] = all_thens_new
+    return ret
+
