@@ -1,6 +1,7 @@
 from typing import List, Dict, Tuple, Any, Optional
 
 from pandas import DataFrame
+import matplotlib.pyplot as plt
 
 from colorama import Fore, Style
 
@@ -118,6 +119,49 @@ def recourse_report_reverse(
 
     return "".join(ret)
 
+def print_recourse_report(
+    rules: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    population_sizes: Optional[Dict[str, int]] = None,
+    missing_subgroup_val: str = "N/A",
+    subgroup_costs: Optional[Dict[Predicate, Dict[str, float]]] = None,
+    aggregate_cors_costs: Optional[Dict[Predicate, Dict[str, List[Tuple[float, float]]]]] = None
+) -> None:
+    for ifclause, sg_thens in rules.items():
+        print(f"If {Style.BRIGHT}{ifclause}{Style.RESET_ALL}:")
+        for subgroup, (cov, thens) in sg_thens.items():
+            if subgroup == missing_subgroup_val:
+                continue
+
+            # print coverage statistics for the subgroup
+            print(f"\tSubgroup '{Style.BRIGHT}{subgroup}{Style.RESET_ALL}', {Fore.BLUE}{cov:.4%}{Fore.RESET} covered", end="")
+            if population_sizes is not None:
+                if subgroup in population_sizes:
+                    print(f" out of {population_sizes[subgroup]}", end="")
+                else:
+                    print(" (protected subgroup population size not given)", end="")
+            print()
+
+            # print each available recourse together with the respective correctness
+            if thens == []:
+                print(f"\t\t{Fore.RED}No recourses for this subgroup!{Fore.RESET}")
+            for then, correctness in thens:
+                _, thenstr = ifthen2str(ifclause=ifclause, thenclause=then)
+                cor_str = Fore.GREEN + f"{correctness:.4%}" + Fore.RESET
+                print(f"\t\tMake {Style.BRIGHT}{thenstr}{Style.RESET_ALL} with correctness {cor_str}.")
+
+            if subgroup_costs is not None:
+                cost_of_current_subgroup = subgroup_costs[ifclause][subgroup]
+                print(f"\t\t{Style.BRIGHT}Aggregate cost{Style.RESET_ALL} of the above recourses = {Fore.MAGENTA}{float(cost_of_current_subgroup):.6}{Fore.RESET}")
+        
+        if aggregate_cors_costs is not None and ifclause in aggregate_cors_costs:
+            print(f"\t{Fore.CYAN}Cumulative correctness plot for the above recourses:{Fore.RESET}")
+            cost_cors = {}
+            for sg, thens in aggregate_cors_costs[ifclause].items():
+                cost_cors[sg] = ([cost for _, cost in thens], [cor for cor, _ in thens])
+            plot_aggregate_correctness(cost_cors)
+            plt.show()
+
+
 def ifthen2str(
     ifclause: Predicate,
     thenclause: Predicate,
@@ -155,3 +199,20 @@ def ifthen2str(
     
     return "".join(ifstr), "".join(thenstr)
 
+
+
+
+def plot_aggregate_correctness(
+    costs_cors_per_subgroup: Dict[str, Tuple[List[float], List[float]]]
+):
+    fig, ax = plt.subplots()
+    lines = []
+    labels = []
+    for sg, (costs, correctnesses) in costs_cors_per_subgroup.items():
+        line, = ax.plot(costs, correctnesses, marker="o", label=sg)
+        lines.append(line)
+        labels.append(sg)
+    ax.set_xlabel("Cost of change")
+    ax.set_ylabel("Correctness percentage")
+    ax.legend(lines, labels)
+    return fig
