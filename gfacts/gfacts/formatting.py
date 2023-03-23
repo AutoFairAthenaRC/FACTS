@@ -209,7 +209,7 @@ def plot_aggregate_correctness(
     lines = []
     labels = []
     for sg, (costs, correctnesses) in costs_cors_per_subgroup.items():
-        line, = ax.plot(costs, correctnesses, marker="o", label=sg)
+        line, = ax.plot(costs, correctnesses, marker="o", label=sg, alpha=0.7)
         lines.append(line)
         labels.append(sg)
     ax.set_xlabel("Cost of change")

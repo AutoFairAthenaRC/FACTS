@@ -27,7 +27,7 @@ from .rule_filters import filter_by_correctness, filter_contained_rules
 
 ## Re-exporting
 from .metrics import calculate_all_if_subgroup_costs
-from .formatting import plot_aggregate_correctness
+from .formatting import plot_aggregate_correctness, print_recourse_report
 ## Re-exporting
 
 
@@ -215,9 +215,12 @@ def select_rules_subset(
     filter_sequence: Optional[List[str]] = None,
     cor_threshold: float = 0.5,
     params: ParameterProxy = ParameterProxy()
-) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]:
+) -> Tuple[
+    Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    Dict[Predicate, Dict[str, float]]
+]:
     # step 1: sort according to metric
-    metrics = {
+    metrics: Dict[str, Callable[[Predicate, List[Tuple[Predicate, float]], ParameterProxy], float]] = {
         "weighted-average": if_group_cost_mean_with_correctness,
         "min-above-thr": functools.partial(if_group_cost_min_change_correctness_threshold, cor_thres=cor_threshold),
         "total-above-thr": functools.partial(if_group_cost_sum_change_correctness_threshold, cor_thres=cor_threshold),
@@ -236,7 +239,7 @@ def select_rules_subset(
     top_rules = dict(rules_sorted[:top_count])
 
     # step 3 (optional): filtering
-    filters = {
+    filters: Dict[str, Callable[[Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]], Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]] = {
         "remove-contained": filter_contained_rules,
         "remove-below-thr": functools.partial(filter_by_correctness, threshold=cor_threshold)
     }
@@ -244,7 +247,14 @@ def select_rules_subset(
         for filter in filter_sequence:
             top_rules = filters[filter](top_rules)
 
-    return top_rules
+    # return also the aggregate costs of the then-blocks of the top rules
+    costs = calculate_all_if_subgroup_costs(
+        list(rulesbyif.keys()),
+        list(rulesbyif.values()),
+        group_calculator=metric_fn
+    )
+
+    return top_rules, costs
 
 
 
@@ -270,7 +280,7 @@ def cumcorr(
     params: ParameterProxy = ParameterProxy()
 ) -> List[Tuple[float, float]]:
     withcosts = [(thenclause, cor, featureChangePred(ifclause, thenclause, params)) for thenclause, cor in thenclauses]
-    thens_sorted_by_cost = sorted(withcosts, key=lambda c: c[2])
+    thens_sorted_by_cost = sorted(withcosts, key=lambda c: (c[2], c[1]))
 
     X_covered_bool = (X[ifclause.features] == ifclause.values).all(axis=1)
     X_covered = X[X_covered_bool]
