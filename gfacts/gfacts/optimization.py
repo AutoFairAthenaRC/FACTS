@@ -8,7 +8,7 @@ from pandas import DataFrame
 
 from .predicate import Predicate, featureChangePred, featureCostPred, recIsValid
 from .models import ModelAPI
-from .metrics import incorrectRecoursesSingle, calculate_cost_difference_2groups, max_intergroup_cost_diff
+from .metrics import incorrectRecoursesSingle, calculate_cost_difference_2groups, max_intergroup_cost_diff, calculate_all_if_subgroup_costs
 from .parameters import ParameterProxy
 
 ##### Submodular optimization as described in AReS paper.
@@ -190,33 +190,80 @@ def sort_triples_by_max_costdiff(
 
 def sort_triples_by_max_costdiff_ignore_nans(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    use_secondary_objective: bool = False,
     **kwargs
 ) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]:
-    def apply_calc(ifthens):
+    subgroup_costs = calculate_all_if_subgroup_costs(
+        list(rulesbyif.keys()),
+        list(rulesbyif.values()),
+        **kwargs
+    )
+
+    max_intergroup_cost_diffs = {
+        ifclause: max(subgroup_costs[ifclause].values()) - min(subgroup_costs[ifclause].values())
+        for ifclause, _ in rulesbyif.items()
+    }
+    min_group_costs = {
+        ifclause: min(subgroup_costs[ifclause].values())
+        for ifclause, _ in rulesbyif.items()
+    }
+
+    def simple_objective_fn(ifthens):
         ifclause = ifthens[0]
-        thenclauses = ifthens[1]
-        max_costdiff = max_intergroup_cost_diff(ifclause, thenclauses, **kwargs)
+        max_costdiff = max_intergroup_cost_diffs[ifclause]
         if np.isnan(max_costdiff):
-            return -np.inf
-        else:
-            return max_costdiff
-    ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
+            max_costdiff = -np.inf
+        return max_costdiff
+    
+    def double_objective_fn(ifthens):
+        ifclause = ifthens[0]
+        max_costdiff = max_intergroup_cost_diffs[ifclause]
+        if np.isnan(max_costdiff):
+            max_costdiff = -np.inf
+        return (max_costdiff, -min_group_costs[ifclause])
+    
+    if use_secondary_objective:
+        ret = sorted(rulesbyif.items(), key=double_objective_fn, reverse=True)
+    else:
+        ret = sorted(rulesbyif.items(), key=simple_objective_fn, reverse=True)
     return ret
 
 def sort_triples_by_max_costdiff_ignore_nans_infs(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    use_secondary_objective: bool = False,
     **kwargs
 ) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]:
-    def apply_calc(ifthens):
+    subgroup_costs = calculate_all_if_subgroup_costs(
+        list(rulesbyif.keys()),
+        list(rulesbyif.values()),
+        **kwargs
+    )
+
+    max_intergroup_cost_diffs = {
+        ifclause: max(subgroup_costs[ifclause].values()) - min(subgroup_costs[ifclause].values())
+        for ifclause, _ in rulesbyif.items()
+    }
+    min_group_costs = {
+        ifclause: min(subgroup_costs[ifclause].values())
+        for ifclause, _ in rulesbyif.items()
+    }
+
+    def simple_objective_fn(ifthens):
         ifclause = ifthens[0]
-        thenclauses = ifthens[1]
-        max_costdiff = max_intergroup_cost_diff(ifclause, thenclauses, **kwargs)
+        max_costdiff = max_intergroup_cost_diffs[ifclause]
         if np.isnan(max_costdiff) or np.isinf(max_costdiff):
-            return -np.inf
-        else:
-            return max_costdiff
-    max_diffs = np.array([apply_calc(ifthens) for ifthens in rulesbyif.items()])
-
-    ret = sorted(rulesbyif.items(), key=apply_calc, reverse=True)
+            max_costdiff = -np.inf
+        return max_costdiff
+    
+    def double_objective_fn(ifthens):
+        ifclause = ifthens[0]
+        max_costdiff = max_intergroup_cost_diffs[ifclause]
+        if np.isnan(max_costdiff) or np.isinf(max_costdiff):
+            max_costdiff = -np.inf
+        return (max_costdiff, -min_group_costs[ifclause])
+    
+    if use_secondary_objective:
+        ret = sorted(rulesbyif.items(), key=double_objective_fn, reverse=True)
+    else:
+        ret = sorted(rulesbyif.items(), key=simple_objective_fn, reverse=True)
     return ret
-

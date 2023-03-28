@@ -37,3 +37,19 @@ def filter_contained_rules(
         if flag_keep:
             ret[ifclause] = thenclauses
     return ret
+
+def delete_rules_of_same_unfairness(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    subgroup_costs: Dict[Predicate, Dict[str, float]]
+) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]:
+    ret: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]] = dict()
+    seen_values = set()
+    for ifclause, thenclauses in rulesbyif.items():
+        curr_subgroup_costs = list(subgroup_costs[ifclause].values())
+        max_intergroup_cost_diff = max(curr_subgroup_costs) - min(curr_subgroup_costs)
+        if max_intergroup_cost_diff in seen_values:
+            continue
+        else:
+            seen_values.add(max_intergroup_cost_diff)
+            ret[ifclause] = thenclauses
+    return ret

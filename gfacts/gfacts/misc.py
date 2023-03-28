@@ -23,11 +23,12 @@ from .optimization import (
     sort_triples_by_max_costdiff_ignore_nans,
     sort_triples_by_max_costdiff_ignore_nans_infs
 )
-from .rule_filters import filter_by_correctness, filter_contained_rules
+from .rule_filters import filter_by_correctness, filter_contained_rules, delete_rules_of_same_unfairness
 
 ## Re-exporting
 from .metrics import calculate_all_if_subgroup_costs
 from .formatting import plot_aggregate_correctness, print_recourse_report
+from .rule_filters import delete_rules_of_same_unfairness
 ## Re-exporting
 
 
@@ -214,6 +215,7 @@ def select_rules_subset(
     top_count: int = 10,
     filter_sequence: Optional[List[str]] = None,
     cor_threshold: float = 0.5,
+    secondary_sorting: bool = False,
     params: ParameterProxy = ParameterProxy()
 ) -> Tuple[
     Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
@@ -228,8 +230,8 @@ def select_rules_subset(
     }
     sorting_functions = {
         "abs-diff-decr": sort_triples_by_max_costdiff,
-        "abs-diff-decr-ignore-forall-subgroups-empty": sort_triples_by_max_costdiff_ignore_nans,
-        "abs-diff-decr-ignore-exists-subgroup-empty": sort_triples_by_max_costdiff_ignore_nans_infs
+        "abs-diff-decr-ignore-forall-subgroups-empty": functools.partial(sort_triples_by_max_costdiff_ignore_nans, use_secondary_objective=secondary_sorting),
+        "abs-diff-decr-ignore-exists-subgroup-empty": functools.partial(sort_triples_by_max_costdiff_ignore_nans_infs, use_secondary_objective=secondary_sorting)
     }
     metric_fn = metrics[metric]
     sort_fn = sorting_functions[sort_strategy]
@@ -238,21 +240,22 @@ def select_rules_subset(
     # step 2: keep only top k rules
     top_rules = dict(rules_sorted[:top_count])
 
-    # step 3 (optional): filtering
-    filters: Dict[str, Callable[[Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]], Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]] = {
-        "remove-contained": filter_contained_rules,
-        "remove-below-thr": functools.partial(filter_by_correctness, threshold=cor_threshold)
-    }
-    if filter_sequence is not None:
-        for filter in filter_sequence:
-            top_rules = filters[filter](top_rules)
-
-    # return also the aggregate costs of the then-blocks of the top rules
+    # keep also the aggregate costs of the then-blocks of the top rules
     costs = calculate_all_if_subgroup_costs(
         list(rulesbyif.keys()),
         list(rulesbyif.values()),
         group_calculator=metric_fn
     )
+
+    # step 3 (optional): filtering
+    filters: Dict[str, Callable[[Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]], Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]] = {
+        "remove-contained": filter_contained_rules,
+        "remove-below-thr": functools.partial(filter_by_correctness, threshold=cor_threshold),
+        "remove-equal-discrepancies": functools.partial(delete_rules_of_same_unfairness, subgroup_costs=costs)
+    }
+    if filter_sequence is not None:
+        for filter in filter_sequence:
+            top_rules = filters[filter](top_rules)
 
     return top_rules, costs
 

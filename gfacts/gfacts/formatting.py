@@ -153,6 +153,10 @@ def print_recourse_report(
                 cost_of_current_subgroup = subgroup_costs[ifclause][subgroup]
                 print(f"\t\t{Style.BRIGHT}Aggregate cost{Style.RESET_ALL} of the above recourses = {Fore.MAGENTA}{float(cost_of_current_subgroup):.6}{Fore.RESET}")
         
+        # if subgroup_costs is not None:
+        #     curr_subgroup_costs = np.array(list(subgroup_costs[ifclause].values()))
+        #     max_intergroup_cost_diff = 
+
         if aggregate_cors_costs is not None and ifclause in aggregate_cors_costs:
             print(f"\t{Fore.CYAN}Cumulative correctness plot for the above recourses:{Fore.RESET}")
             cost_cors = {}
