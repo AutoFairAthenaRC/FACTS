@@ -23,12 +23,11 @@ from .optimization import (
     sort_triples_by_max_costdiff_ignore_nans,
     sort_triples_by_max_costdiff_ignore_nans_infs
 )
-from .rule_filters import filter_by_correctness, filter_contained_rules, delete_rules_of_same_unfairness
+from .rule_filters import filter_by_correctness, filter_contained_rules, delete_fair_rules
 
 ## Re-exporting
 from .metrics import calculate_all_if_subgroup_costs
 from .formatting import plot_aggregate_correctness, print_recourse_report
-from .rule_filters import delete_rules_of_same_unfairness
 ## Re-exporting
 
 
@@ -225,7 +224,7 @@ def select_rules_subset(
     metrics: Dict[str, Callable[[Predicate, List[Tuple[Predicate, float]], ParameterProxy], float]] = {
         "weighted-average": if_group_cost_mean_with_correctness,
         "min-above-thr": functools.partial(if_group_cost_min_change_correctness_threshold, cor_thres=cor_threshold),
-        "total-above-thr": functools.partial(if_group_cost_mean_change_correctness_threshold, cor_thres=cor_threshold),
+        "mean-above-thr": functools.partial(if_group_cost_mean_change_correctness_threshold, cor_thres=cor_threshold),
         "num-above-thr": functools.partial(if_group_cost_recoursescount_correctness_threshold, cor_thres=cor_threshold)
     }
     sorting_functions = {
@@ -251,7 +250,7 @@ def select_rules_subset(
     filters: Dict[str, Callable[[Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]], Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]] = {
         "remove-contained": filter_contained_rules,
         "remove-below-thr": functools.partial(filter_by_correctness, threshold=cor_threshold),
-        "remove-equal-discrepancies": functools.partial(delete_rules_of_same_unfairness, subgroup_costs=costs)
+        "remove-fair-rules": functools.partial(delete_fair_rules, subgroup_costs=costs)
     }
     if filter_sequence is not None:
         for filter in filter_sequence:
