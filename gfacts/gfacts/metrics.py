@@ -95,7 +95,7 @@ def if_group_cost_mean_with_correctness(
     thenclauses: List[Tuple[Predicate, float]],
     params: ParameterProxy = ParameterProxy()
 ) -> float:
-    return np.mean([cor * featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses]).astype(float)
+    return -np.mean([cor * featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses]).astype(float)
 
 def if_group_cost_mean_correctness_weighted(
     ifclause: Predicate,
@@ -121,7 +121,7 @@ def if_group_cost_min_change_correctness_threshold(
         ret = np.inf
     return ret
 
-def if_group_cost_sum_change_correctness_threshold(
+def if_group_cost_mean_change_correctness_threshold(
     ifclause: Predicate,
     thenclauses: List[Tuple[Predicate, float]],
     cor_thres: float = 0.5,
@@ -131,7 +131,7 @@ def if_group_cost_sum_change_correctness_threshold(
         featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses if cor >= cor_thres
         ])
     if feature_changes.size > 0:
-        ret = feature_changes.sum()
+        ret = feature_changes.mean()
     else:
         ret = np.inf
     return ret
@@ -145,7 +145,7 @@ def if_group_cost_recoursescount_correctness_threshold(
     feature_changes = np.array([
         featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses if cor >= cor_thres
         ])
-    return feature_changes.size
+    return -feature_changes.size
 
 
 ##### Aggregations of if-group cost for all subgroups and for all if-groups in a list

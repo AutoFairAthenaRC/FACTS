@@ -14,7 +14,7 @@ from .metrics import (
     incorrectRecoursesIfThen,
     if_group_cost_mean_with_correctness,
     if_group_cost_min_change_correctness_threshold,
-    if_group_cost_sum_change_correctness_threshold,
+    if_group_cost_mean_change_correctness_threshold,
     if_group_cost_recoursescount_correctness_threshold
 )
 from .optimization import (
@@ -225,7 +225,7 @@ def select_rules_subset(
     metrics: Dict[str, Callable[[Predicate, List[Tuple[Predicate, float]], ParameterProxy], float]] = {
         "weighted-average": if_group_cost_mean_with_correctness,
         "min-above-thr": functools.partial(if_group_cost_min_change_correctness_threshold, cor_thres=cor_threshold),
-        "total-above-thr": functools.partial(if_group_cost_sum_change_correctness_threshold, cor_thres=cor_threshold),
+        "total-above-thr": functools.partial(if_group_cost_mean_change_correctness_threshold, cor_thres=cor_threshold),
         "num-above-thr": functools.partial(if_group_cost_recoursescount_correctness_threshold, cor_thres=cor_threshold)
     }
     sorting_functions = {
