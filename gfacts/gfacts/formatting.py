@@ -104,7 +104,7 @@ def recourse_report_reverse(
                 continue
 
             # print coverage statistics for the subgroup
-            ret.append(f"\tSubgroup '{Style.BRIGHT}{subgroup}{Style.RESET_ALL}', {Fore.BLUE}{cov:.4%}{Fore.RESET} covered")
+            ret.append(f"\tSubgroup '{Style.BRIGHT}{subgroup}{Style.RESET_ALL}', {Fore.BLUE}{cov:.2%}{Fore.RESET} covered")
             if population_sizes is not None:
                 if subgroup in population_sizes:
                     ret.append(f" out of {population_sizes[subgroup]}")
@@ -117,12 +117,12 @@ def recourse_report_reverse(
                 ret.append(f"\t\t{Fore.RED}No recourses for this subgroup!\n{Fore.RESET}")
             for then, correctness in thens:
                 _, thenstr = ifthen2str(ifclause=ifclause, thenclause=then)
-                cor_str = Fore.GREEN + f"{correctness:.4%}" + Fore.RESET
+                cor_str = Fore.GREEN + f"{correctness:.2%}" + Fore.RESET
                 ret.append(f"\t\tMake {Style.BRIGHT}{thenstr}{Style.RESET_ALL} with correctness {cor_str}.\n")
 
             if subgroup_costs is not None and show_subgroup_costs:
                 cost_of_current_subgroup = subgroup_costs[ifclause][subgroup]
-                ret.append(f"\t\t{Style.BRIGHT}Aggregate cost{Style.RESET_ALL} of the above recourses = {Fore.MAGENTA}{float(cost_of_current_subgroup):.6}{Fore.RESET}\n")
+                ret.append(f"\t\t{Style.BRIGHT}Aggregate cost{Style.RESET_ALL} of the above recourses = {Fore.MAGENTA}{float(cost_of_current_subgroup):.1}{Fore.RESET}\n")
         
         # TODO: show bias message in (much) larger font size.
         if subgroup_costs is not None:
@@ -130,7 +130,7 @@ def recourse_report_reverse(
             max_intergroup_cost_diff = max(curr_subgroup_costs.values()) - min(curr_subgroup_costs.values())
             biased_subgroup, max_cost = max(curr_subgroup_costs.items(), key=lambda p: p[1])
             if max_intergroup_cost_diff > 0:
-                ret.append(f"\t{Fore.MAGENTA}Bias against {biased_subgroup}. Unfairness measure = {max_intergroup_cost_diff}.{Fore.RESET}\n")
+                ret.append(f"\t{Fore.MAGENTA}Bias against {biased_subgroup}. Unfairness measure = {round(max_intergroup_cost_diff,2)}.{Fore.RESET}\n")
             else:
                 ret.append("\tNo bias!\n")
 
@@ -151,7 +151,7 @@ def print_recourse_report(
                 continue
 
             # print coverage statistics for the subgroup
-            print(f"\tSubgroup '{Style.BRIGHT}{subgroup}{Style.RESET_ALL}', {Fore.BLUE}{cov:.4%}{Fore.RESET} covered", end="")
+            print(f"\tSubgroup '{Style.BRIGHT}{subgroup}{Style.RESET_ALL}', {Fore.BLUE}{cov:.2%}{Fore.RESET} covered", end="")
             if population_sizes is not None:
                 if subgroup in population_sizes:
                     print(f" out of {population_sizes[subgroup]}", end="")
@@ -164,12 +164,12 @@ def print_recourse_report(
                 print(f"\t\t{Fore.RED}No recourses for this subgroup!{Fore.RESET}")
             for then, correctness in thens:
                 _, thenstr = ifthen2str(ifclause=ifclause, thenclause=then)
-                cor_str = Fore.GREEN + f"{correctness:.4%}" + Fore.RESET
+                cor_str = Fore.GREEN + f"{correctness:.2%}" + Fore.RESET
                 print(f"\t\tMake {Style.BRIGHT}{thenstr}{Style.RESET_ALL} with correctness {cor_str}.")
 
             if subgroup_costs is not None and show_subgroup_costs:
                 cost_of_current_subgroup = subgroup_costs[ifclause][subgroup]
-                print(f"\t\t{Style.BRIGHT}Aggregate cost{Style.RESET_ALL} of the above recourses = {Fore.MAGENTA}{float(cost_of_current_subgroup):.6}{Fore.RESET}")
+                print(f"\t\t{Style.BRIGHT}Aggregate cost{Style.RESET_ALL} of the above recourses = {Fore.MAGENTA}{float(cost_of_current_subgroup):.1}{Fore.RESET}")
         
         # TODO: show bias message in (much) larger font size.
         if subgroup_costs is not None:
@@ -177,7 +177,7 @@ def print_recourse_report(
             max_intergroup_cost_diff = max(curr_subgroup_costs.values()) - min(curr_subgroup_costs.values())
             biased_subgroup, max_cost = max(curr_subgroup_costs.items(), key=lambda p: p[1])
             if max_intergroup_cost_diff > 0:
-                print(f"\t{Fore.MAGENTA}Bias against {biased_subgroup}. Unfairness measure = {max_intergroup_cost_diff}.{Fore.RESET}")
+                print(f"\t{Fore.MAGENTA}Bias against {biased_subgroup}. Unfairness measure = {round(max_intergroup_cost_diff,2)}.{Fore.RESET}")
             else:
                 print(f"\t{Fore.MAGENTA}No bias!{Fore.RESET}")
 
