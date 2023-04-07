@@ -5,8 +5,6 @@ from pandas import DataFrame
 import matplotlib.pyplot as plt
 
 from colorama import Fore, Style
-from IPython.display import display
-from IPython.core.display import Markdown
 
 from .models import ModelAPI
 from .recourse_sets import TwoLevelRecourseSet
@@ -117,12 +115,15 @@ def recourse_report_reverse(
                 ret.append(f"\t\t{Fore.RED}No recourses for this subgroup!\n{Fore.RESET}")
             for then, correctness in thens:
                 _, thenstr = ifthen2str(ifclause=ifclause, thenclause=then)
-                cor_str = Fore.GREEN + f"{correctness:.2%}" + Fore.RESET
+
+                # abs() used to get rid of -0.0
+                assert correctness >= 0
+                cor_str = Fore.GREEN + f"{abs(correctness):.2%}" + Fore.RESET
                 ret.append(f"\t\tMake {Style.BRIGHT}{thenstr}{Style.RESET_ALL} with correctness {cor_str}.\n")
 
             if subgroup_costs is not None and show_subgroup_costs:
                 cost_of_current_subgroup = subgroup_costs[ifclause][subgroup]
-                ret.append(f"\t\t{Style.BRIGHT}Aggregate cost{Style.RESET_ALL} of the above recourses = {Fore.MAGENTA}{float(cost_of_current_subgroup):.1}{Fore.RESET}\n")
+                ret.append(f"\t\t{Style.BRIGHT}Aggregate cost{Style.RESET_ALL} of the above recourses = {Fore.MAGENTA}{cost_of_current_subgroup:.2f}{Fore.RESET}\n")
         
         # TODO: show bias message in (much) larger font size.
         if subgroup_costs is not None:
@@ -164,12 +165,15 @@ def print_recourse_report(
                 print(f"\t\t{Fore.RED}No recourses for this subgroup!{Fore.RESET}")
             for then, correctness in thens:
                 _, thenstr = ifthen2str(ifclause=ifclause, thenclause=then)
-                cor_str = Fore.GREEN + f"{correctness:.2%}" + Fore.RESET
+
+                # abs() used to get rid of -0.0
+                assert correctness >= 0
+                cor_str = Fore.GREEN + f"{abs(correctness):.2%}" + Fore.RESET
                 print(f"\t\tMake {Style.BRIGHT}{thenstr}{Style.RESET_ALL} with correctness {cor_str}.")
 
             if subgroup_costs is not None and show_subgroup_costs:
                 cost_of_current_subgroup = subgroup_costs[ifclause][subgroup]
-                print(f"\t\t{Style.BRIGHT}Aggregate cost{Style.RESET_ALL} of the above recourses = {Fore.MAGENTA}{float(cost_of_current_subgroup):.1}{Fore.RESET}")
+                print(f"\t\t{Style.BRIGHT}Aggregate cost{Style.RESET_ALL} of the above recourses = {Fore.MAGENTA}{cost_of_current_subgroup:.2f}{Fore.RESET}")
         
         # TODO: show bias message in (much) larger font size.
         if subgroup_costs is not None:

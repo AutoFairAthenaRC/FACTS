@@ -48,6 +48,9 @@ class Predicate:
         return "".join(ret)
     
     def __post_init__(self, operators=None):
+        feats, vals = zip(*sorted(zip(self.features, self.values)))
+        self.features = list(feats)
+        self.values = list(vals)
         if operators is None:
             self.operators = [Operator.EQ for _ in range(len(self.features))]
         else:
@@ -55,11 +58,10 @@ class Predicate:
     
     @staticmethod
     def from_dict(d: Dict[str, str]) -> "Predicate":
-        p = Predicate()
-        p.features = list(d.keys())
-        p.values = list(d.values())
-        p.operators = [Operator.EQ for _ in range(len(d))]
-        return p
+        feats = list(d.keys())
+        vals = list(d.values())
+        ops = [Operator.EQ for _ in range(len(d))]
+        return Predicate(features=feats, values=vals, operators=ops)
     
     def to_dict(self) -> Dict[str, str]:
         return dict(zip(self.features, self.values))
