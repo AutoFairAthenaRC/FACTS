@@ -122,7 +122,7 @@ def recourse_report_reverse(
 
             if subgroup_costs is not None and show_subgroup_costs:
                 cost_of_current_subgroup = subgroup_costs[ifclause][subgroup]
-                ret.append(f"\t\t{Style.BRIGHT}Aggregate cost{Style.RESET_ALL} of the above recourses = {Fore.MAGENTA}{float(cost_of_current_subgroup):.1}{Fore.RESET}\n")
+                ret.append(f"\t\t{Style.BRIGHT}Aggregate cost{Style.RESET_ALL} of the above recourses = {Fore.MAGENTA}{float(cost_of_current_subgroup):.2f}{Fore.RESET}\n")
         
         # TODO: show bias message in (much) larger font size.
         if subgroup_costs is not None:
@@ -169,7 +169,7 @@ def print_recourse_report(
 
             if subgroup_costs is not None and show_subgroup_costs:
                 cost_of_current_subgroup = subgroup_costs[ifclause][subgroup]
-                print(f"\t\t{Style.BRIGHT}Aggregate cost{Style.RESET_ALL} of the above recourses = {Fore.MAGENTA}{float(cost_of_current_subgroup):.1}{Fore.RESET}")
+                print(f"\t\t{Style.BRIGHT}Aggregate cost{Style.RESET_ALL} of the above recourses = {Fore.MAGENTA}{float(cost_of_current_subgroup):.2f}{Fore.RESET}")
         
         # TODO: show bias message in (much) larger font size.
         if subgroup_costs is not None:
