@@ -89,13 +89,20 @@ def recourse_report_reverse(
     population_sizes: Optional[Dict[str, int]] = None,
     missing_subgroup_val: str = "N/A",
     subgroup_costs: Optional[Dict[Predicate, Dict[str, float]]] = None,
-    show_subgroup_costs: bool = False
+    show_subgroup_costs: bool = False,
+    show_bias: str = None
 ) -> str:
     if len(rules) == 0:
         return f"{Style.BRIGHT}With the given parameters, no recourses showing unfairness have been found!{Style.RESET_ALL}\n"
     
     ret = []
     for ifclause, sg_thens in rules.items():
+        if subgroup_costs is not None:
+            curr_subgroup_costs = subgroup_costs[ifclause]
+            max_intergroup_cost_diff = max(curr_subgroup_costs.values()) - min(curr_subgroup_costs.values())
+            biased_subgroup, max_cost = max(curr_subgroup_costs.items(), key=lambda p: p[1])
+            if biased_subgroup != show_bias:
+                continue
         ret.append(f"If {Style.BRIGHT}{ifclause}{Style.RESET_ALL}:\n")
         for subgroup, (cov, thens) in sg_thens.items():
             if subgroup == missing_subgroup_val:
