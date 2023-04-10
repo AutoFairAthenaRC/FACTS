@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+
 from pandas import DataFrame
 from typing import List, Tuple
 
@@ -10,6 +12,8 @@ from .predicate import Predicate
 def preprocessDataset(data: DataFrame) -> DataFrame:
     d = data.copy()
     for col in d:
+        if isinstance(d[col].dtype, pd.CategoricalDtype):
+            d[col] = np.asarray(d[col])
         d[col] = d[col].map(lambda x: (col, x))
     return d
 
