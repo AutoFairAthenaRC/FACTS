@@ -95,7 +95,7 @@ def if_group_cost_mean_with_correctness(
     thenclauses: List[Tuple[Predicate, float]],
     params: ParameterProxy = ParameterProxy()
 ) -> float:
-    return -np.mean([cor * featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses]).astype(float)
+    return -np.mean([cor / featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses]).astype(float)
 
 def if_group_cost_mean_correctness_weighted(
     ifclause: Predicate,

@@ -11,6 +11,8 @@ from .recourse_sets import TwoLevelRecourseSet
 from .metrics import incorrectRecourses, incorrectRecoursesSubmodular, cover, featureChange, featureCost, incorrectRecoursesSingle
 from .predicate import Predicate, recIsValid
 
+ASSUME_ZERO = 10**(-7)
+
 def report_base(outer: List[Predicate], blocks: List) -> str:
     ret = []
     for p in outer:
@@ -125,7 +127,7 @@ def recourse_report_reverse(
                 _, thenstr = ifthen2str(ifclause=ifclause, thenclause=then)
 
                 # abs() used to get rid of -0.0
-                assert correctness >= 0
+                assert correctness >= -ASSUME_ZERO
                 cor_str = Fore.GREEN + f"{abs(correctness):.2%}" + Fore.RESET
                 ret.append(f"\t\tMake {Style.BRIGHT}{thenstr}{Style.RESET_ALL} with correctness {cor_str}.\n")
 
@@ -186,7 +188,7 @@ def print_recourse_report(
                 _, thenstr = ifthen2str(ifclause=ifclause, thenclause=then)
 
                 # abs() used to get rid of -0.0
-                assert correctness >= 0
+                assert correctness >= -ASSUME_ZERO
                 cor_str = Fore.GREEN + f"{abs(correctness):.2%}" + Fore.RESET
                 print(f"\t\tMake {Style.BRIGHT}{thenstr}{Style.RESET_ALL} with correctness {cor_str}.")
 
