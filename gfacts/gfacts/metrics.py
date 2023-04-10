@@ -15,7 +15,7 @@ def incorrectRecoursesIfThen(ifclause: Predicate, thenclause: Predicate, X_aff: 
     X_aff_covered_bool = (X_aff[ifclause.features] == ifclause.values).all(axis=1)
     X_aff_covered = X_aff[X_aff_covered_bool].copy()
     if X_aff_covered.shape[0] == 0:
-        return 0
+        raise ValueError("Assuming non-negative frequent itemset threshold, total absence of covered instances should be impossible!")
     
     X_aff_covered[thenclause.features] = thenclause.values
 
