@@ -112,7 +112,7 @@ def recourse_report_reverse(
                 continue
 
             # print coverage statistics for the subgroup
-            ret.append(f"\tSubgroup '{Style.BRIGHT}{subgroup}{Style.RESET_ALL}', {Fore.BLUE}{cov:.2%}{Fore.RESET} covered")
+            ret.append(f"\tProtected Subgroup '{Style.BRIGHT}{subgroup}{Style.RESET_ALL}', {Fore.BLUE}{cov:.2%}{Fore.RESET} covered")
             if population_sizes is not None:
                 if subgroup in population_sizes:
                     ret.append(f" out of {population_sizes[subgroup]}")
@@ -173,7 +173,7 @@ def print_recourse_report(
                 continue
 
             # print coverage statistics for the subgroup
-            print(f"\tSubgroup '{Style.BRIGHT}{subgroup}{Style.RESET_ALL}', {Fore.BLUE}{cov:.2%}{Fore.RESET} covered", end="")
+            print(f"\tProtected Subgroup '{Style.BRIGHT}{subgroup}{Style.RESET_ALL}', {Fore.BLUE}{cov:.2%}{Fore.RESET} covered", end="")
             if population_sizes is not None:
                 if subgroup in population_sizes:
                     print(f" out of {population_sizes[subgroup]}", end="")
