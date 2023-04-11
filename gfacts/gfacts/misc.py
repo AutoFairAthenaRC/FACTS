@@ -243,7 +243,8 @@ def select_rules_subset(
     costs = calculate_all_if_subgroup_costs(
         list(rulesbyif.keys()),
         list(rulesbyif.values()),
-        group_calculator=metric_fn
+        group_calculator=metric_fn,
+        params=params
     )
 
     # step 3 (optional): filtering
