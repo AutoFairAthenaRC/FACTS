@@ -61,7 +61,7 @@ def keep_only_minimum_change(
     for ifclause, thenclauses in rulesbyif.items():
         ret[ifclause] = dict()
         for sg, (cov, thens) in thenclauses.items():
-            min_change = min(featureChangePred(ifclause, then, params=params) for then, _ in thens)
+            min_change = min((featureChangePred(ifclause, then, params=params) for then, _ in thens), default=np.inf)
             newthens = [(then, cor) for then, cor in thens if featureChangePred(ifclause, then, params=params) <= min_change]
             ret[ifclause][sg] = (cov, newthens)
     return ret
