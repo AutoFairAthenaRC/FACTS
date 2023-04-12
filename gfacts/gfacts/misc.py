@@ -23,7 +23,7 @@ from .optimization import (
     sort_triples_by_max_costdiff_ignore_nans,
     sort_triples_by_max_costdiff_ignore_nans_infs
 )
-from .rule_filters import filter_by_correctness, filter_contained_rules, delete_fair_rules
+from .rule_filters import filter_by_correctness, filter_contained_rules, delete_fair_rules, keep_only_minimum_change
 
 ## Re-exporting
 from .metrics import calculate_all_if_subgroup_costs
@@ -251,7 +251,8 @@ def select_rules_subset(
     filters: Dict[str, Callable[[Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]], Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]] = {
         "remove-contained": filter_contained_rules,
         "remove-below-thr": functools.partial(filter_by_correctness, threshold=cor_threshold),
-        "remove-fair-rules": functools.partial(delete_fair_rules, subgroup_costs=costs)
+        "remove-fair-rules": functools.partial(delete_fair_rules, subgroup_costs=costs),
+        "keep-only-min-change": functools.partial(keep_only_minimum_change, params=params)
     }
     if filter_sequence is not None:
         for filter in filter_sequence:

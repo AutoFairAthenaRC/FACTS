@@ -2,7 +2,8 @@ from typing import Dict, Tuple, List
 from pandas import Series
 import numpy as np
 
-from .predicate import Predicate
+from .parameters import ParameterProxy
+from .predicate import Predicate, featureChangePred
 
 def filter_by_correctness(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
@@ -50,4 +51,17 @@ def delete_fair_rules(
         if max_intergroup_cost_diff == 0 or np.isnan(max_intergroup_cost_diff):
             continue
         ret[ifclause] = thenclauses
+    return ret
+
+def keep_only_minimum_change(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    params: ParameterProxy = ParameterProxy()
+) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]:
+    ret: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]] = dict()
+    for ifclause, thenclauses in rulesbyif.items():
+        ret[ifclause] = dict()
+        for sg, (cov, thens) in thenclauses.items():
+            min_change = min(featureChangePred(ifclause, then, params=params) for then, _ in thens)
+            newthens = [(then, cor) for then, cor in thens if featureChangePred(ifclause, then, params=params) <= min_change]
+            ret[ifclause][sg] = (cov, newthens)
     return ret
