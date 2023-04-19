@@ -206,6 +206,29 @@ def rules2rulesbyif(rules: List[Tuple[Predicate, Predicate, Dict[str, float], Di
     
     return rules_by_if
 
+def rulesbyif2rules(rules_by_if: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]
+) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
+    rules: List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]] = []
+    for ifclause, thenclauses in rules_by_if.items():
+        then_covs = dict()
+        then_cors = dict()
+        for sg, (cov, thens) in thenclauses.items():
+            for then, cor in thens:
+                if then in then_covs:
+                    then_covs[then][sg] = cov
+                else:
+                    then_covs[then] = {sg: cov}
+                if then in then_cors:
+                    then_cors[then][sg] = cor
+                else:
+                    then_cors[then] = {sg: cor}
+        
+        for sg, (_cov, thens) in thenclauses.items():
+            for then, _cor in thens:
+                rules.append((ifclause, then, then_covs[then], then_cors[then]))
+    return rules
+
+
 
 
 def select_rules_subset(
