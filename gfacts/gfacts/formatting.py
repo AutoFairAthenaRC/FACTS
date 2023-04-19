@@ -226,8 +226,8 @@ def ifthen2str(
     same_col: str = "default",
     different_col: str = Fore.RED
 ) -> Tuple[str, str]:
-    if not recIsValid(ifclause, thenclause):
-        raise ValueError("If and then clauses should be compatible.")
+    # if not recIsValid(ifclause, thenclause,drop_infeasible):
+    #     raise ValueError("If and then clauses should be compatible.")
     
     ifstr = []
     thenstr = []

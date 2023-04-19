@@ -112,7 +112,7 @@ def affected_unaffected_split(
 
 def freqitemsets_with_supports(
     X: DataFrame,
-    min_support: float = 0.001
+    min_support: float = 0.01
 ) -> Tuple[List[Predicate], List[float]]:
     ret = aprioriout2predicateList(runApriori(preprocessDataset(X), min_support=min_support))
     return ret
@@ -142,7 +142,8 @@ def valid_ifthens_with_coverage_correctness(
     model: ModelAPI,
     sensitive_attribute: str,
     freqitem_minsupp: float = 0.01,
-    missing_subgroup_val: str = "N/A"
+    missing_subgroup_val: str = "N/A",
+    drop_infeasible: bool = True
 ) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
     # throw out all individuals for whom the value of the sensitive attribute is unknown
     X = X[X[sensitive_attribute] != missing_subgroup_val]
@@ -184,7 +185,7 @@ def valid_ifthens_with_coverage_correctness(
 
     # Filter all if-then pairs to keep only valid
     print("Computing all valid if-then pairs between the common frequent itemsets of each subgroup of the affected instances and the frequent itemsets of the unaffacted instances.",flush=True)
-    ifthens = [(h, s, ifsupps) for h, ifsupps in tqdm(aff_intersection) for s in freq_unaffected if recIsValid(h, s)]
+    ifthens = [(h, s, ifsupps) for h, ifsupps in tqdm(aff_intersection) for s in freq_unaffected if recIsValid(h, s,drop_infeasible)]
 
     # Calculate incorrectness percentages
     print("Computing correctenesses for all valid if-thens.",flush=True)
@@ -205,7 +206,27 @@ def rules2rulesbyif(rules: List[Tuple[Predicate, Predicate, Dict[str, float], Di
     
     return rules_by_if
 
-
+def rulesbyif2rules(rules_by_if: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]
+) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
+    rules: List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]] = []
+    for ifclause, thenclauses in rules_by_if.items():
+        then_covs = dict()
+        then_cors = dict()
+        for sg, (cov, thens) in thenclauses.items():
+            for then, cor in thens:
+                if then in then_covs:
+                    then_covs[then][sg] = cov
+                else:
+                    then_covs[then] = {sg: cov}
+                if then in then_cors:
+                    then_cors[then][sg] = cor
+                else:
+                    then_cors[then] = {sg: cor}
+        
+        for sg, (_cov, thens) in thenclauses.items():
+            for then, _cor in thens:
+                rules.append((ifclause, then, then_covs[then], then_cors[then]))
+    return rules
 
 def select_rules_subset(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],

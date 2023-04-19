@@ -97,11 +97,36 @@ def featureChangePred(p1: Predicate, p2: Predicate, params: ParameterProxy = Par
         total += costChange
     return total
 
-def recIsValid(p1: Predicate, p2: Predicate) -> bool:
+#def recIsValid(p1: Predicate, p2: Predicate) -> bool:
+# def recIsValid(p1: Predicate, p2: Predicate) -> bool:
+#     n1 = len(p1.features)
+#     n2 = len(p2.features)
+#     if n1 != n2:
+#         return False
+#     featuresMatch = all(map(operator.eq, p1.features, p2.features))
+#     existsChange = any(map(operator.ne, p1.values, p2.values))
+#     return featuresMatch and existsChange
+
+def recIsValid(p1: Predicate, p2: Predicate,drop_infeasible: bool) -> bool:
+    feat_change = True
     n1 = len(p1.features)
     n2 = len(p2.features)
     if n1 != n2:
         return False
+    
     featuresMatch = all(map(operator.eq, p1.features, p2.features))
     existsChange = any(map(operator.ne, p1.values, p2.values))
-    return featuresMatch and existsChange
+    
+    if drop_infeasible == True:
+        if all(map(operator.eq, p1.features, p2.features)) and any(map(operator.ne, p1.values, p2.values)):
+            for count,feat in enumerate(p1.features):
+                if feat == 'age':
+                    age_change = p1.values[count].left <= p2.values[count].left
+                    feat_change = feat_change and age_change
+                elif feat == 'education-num':
+                    edu_change = p1.values[count] <= p2.values[count]
+                    feat_change = feat_change and edu_change
+            return feat_change
+        else: return False
+    else:
+        return featuresMatch and existsChange
