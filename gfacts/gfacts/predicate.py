@@ -4,6 +4,7 @@ from enum import Enum
 import operator
 import functools
 
+from pandas import DataFrame
 from .parameters import ParameterProxy
 
 class Operator(Enum):
@@ -112,7 +113,7 @@ def featureChangePred(p1: Predicate, p2: Predicate, params: ParameterProxy = Par
 #     existsChange = any(map(operator.ne, p1.values, p2.values))
 #     return featuresMatch and existsChange
 
-def recIsValid(p1: Predicate, p2: Predicate,drop_infeasible: bool) -> bool:
+def recIsValid(p1: Predicate, p2: Predicate,X: DataFrame ,drop_infeasible: bool) -> bool:
     feat_change = True
     n1 = len(p1.features)
     n2 = len(p2.features)
@@ -122,6 +123,9 @@ def recIsValid(p1: Predicate, p2: Predicate,drop_infeasible: bool) -> bool:
     featuresMatch = all(map(operator.eq, p1.features, p2.features))
     existsChange = any(map(operator.ne, p1.values, p2.values))
     
+    if n1 == len(X.columns) and all(map(operator.ne, p1.values, p2.values)):
+        return False
+
     if drop_infeasible == True:
         if all(map(operator.eq, p1.features, p2.features)) and any(map(operator.ne, p1.values, p2.values)):
             for count,feat in enumerate(p1.features):
@@ -135,3 +139,16 @@ def recIsValid(p1: Predicate, p2: Predicate,drop_infeasible: bool) -> bool:
         else: return False
     else:
         return featuresMatch and existsChange
+    
+def drop_two_above(p1: Predicate, p2: Predicate,l: list) -> bool:
+    feat_change = True
+
+    for count,feat in enumerate(p1.features):
+        if feat=='education-num':
+            edu_change =  p2.values[count] - p1.values[count] <=2
+            feat_change = feat_change and edu_change
+        elif feat == 'age':
+            age_change = l.index(p2.values[count].left) - l.index(p1.values[count].left) <=2
+            feat_change = feat_change and age_change
+
+    return feat_change
