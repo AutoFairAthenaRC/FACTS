@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import List, Any, Dict
 from enum import Enum
 import operator
+import functools
 
 from .parameters import ParameterProxy
 
@@ -18,6 +19,7 @@ class Operator(Enum):
             }
         return ops[self](x, y)
 
+@functools.total_ordering
 @dataclass
 class Predicate:
     features: List[str] = field(default_factory=list)
@@ -31,6 +33,9 @@ class Predicate:
         d1 = self.to_dict()
         d2 = __o.to_dict()
         return d1 == d2
+    
+    def __lt__(self, __o: object) -> bool:
+        return repr(self) < repr(__o)
     
     def __hash__(self) -> int:
         return hash(repr(self))

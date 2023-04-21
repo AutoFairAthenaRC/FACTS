@@ -139,6 +139,62 @@ def calculate_correctnesses(
     
     return ifthens_with_correctness
 
+
+def aff_intersection_version_1(RLs_and_supports, subgroups):
+    RLs_supports_dict = {sg: [(dict(zip(p.features, p.values)), supp) for p, supp in zip(
+        *RL_sup)] for sg, RL_sup in RLs_and_supports.items()}
+
+    if len(RLs_supports_dict) < 1:
+        raise ValueError("There must be at least 2 subgroups.")
+    else:
+        sg = subgroups[0]
+        RLs_supports = RLs_supports_dict[sg]
+        aff_intersection = [(d, {sg: supp}) for d, supp in RLs_supports]
+    for sg, RLs in tqdm(RLs_supports_dict.items()):
+        if sg == subgroups[0]:
+            continue
+
+        aff_intersection = intersect_predicate_lists(aff_intersection, RLs, sg)
+
+    aff_intersection = [(Predicate.from_dict(d), supps)
+                        for d, supps in aff_intersection]
+
+    return aff_intersection
+
+
+def aff_intersection_version_2(RLs_and_supports, subgroups):
+    RLs_supports_dict = {sg: {tuple(sorted(zip(p.features, p.values))): supp for p, supp in zip(
+        *RL_sup)} for sg, RL_sup in RLs_and_supports.items()}
+
+    if len(RLs_supports_dict) < 1:
+        raise ValueError("There must be at least 2 subgroups.")
+    else:
+
+        aff_intersection = []
+
+        for i in tqdm(range(len(subgroups) - 1)):
+            sg1 = subgroups[i]
+            for value, supp in RLs_supports_dict[sg1].items():
+                in_all = True
+                supp_dict = {sg1: supp}
+                for j in range(i + 1, len(subgroups)):
+                    sg2 = subgroups[j]
+                    if value not in RLs_supports_dict[sg2]:
+                        in_all = False
+                    supp_dict[sg2] = RLs_supports_dict[sg2].get(value)
+
+                if in_all == True:
+                    feat_dict = {}
+                    for feat in value:
+                        feat_dict[feat[0]] = feat[1]
+                    aff_intersection.append((feat_dict, supp_dict))
+
+    aff_intersection = [(Predicate.from_dict(d), supps)
+                        for d, supps in aff_intersection]
+
+    return aff_intersection
+
+
 def valid_ifthens_with_coverage_correctness(
     X: DataFrame,
     model: ModelAPI,
@@ -160,38 +216,31 @@ def valid_ifthens_with_coverage_correctness(
     affected_subgroups = {sg: X_aff[X_aff[sensitive_attribute] == sg].drop([sensitive_attribute], axis=1) for sg in subgroups}
 
     # calculate frequent itemsets for each subgroup and turn them into predicates
-    print("Computing frequent itemsets for each subgroup of the affected instances.",flush=True)
+    print("Computing frequent itemsets for each subgroup of the affected instances.", flush=True)
     RLs_and_supports = {sg: freqitemsets_with_supports(affected_sg, min_support=freqitem_minsupp) for sg, affected_sg in tqdm(affected_subgroups.items())}
 
-    # turn RLs into dictionaries for easier comparison
-    RLs_supports_dict = {sg: [(dict(zip(p.features, p.values)), supp) for p, supp in zip(*RL_sup)] for sg, RL_sup in RLs_and_supports.items()}
+    # aff_intersection_1 = aff_intersection_version_1(
+    #     RLs_and_supports, subgroups)
+    aff_intersection_2 = aff_intersection_version_2(
+        RLs_and_supports, subgroups)
 
-    intersection = [sg for sg, (itemsets, supports) in RLs_and_supports.items()]
+    # print(len(aff_intersection_1), len(aff_intersection_2))
+    # if aff_intersection_1 != aff_intersection_2:
+    #     print("ERRRROOROROROROROROROROROR")
+
+    aff_intersection = aff_intersection_2
+
     # intersection of frequent itemsets of all sensitive subgroups
-    print("Computing the intersection between the frequent itemsets of each subgroup of the affected instances.",flush=True)
-    if len(RLs_supports_dict) < 1:
-        raise ValueError("There must be at least 2 subgroups.")
-    else:
-        sg = subgroups[0]
-        RLs_supports = RLs_supports_dict[sg]
-        aff_intersection = [(d, {sg: supp}) for d, supp in RLs_supports]
-    for sg, RLs in tqdm(RLs_supports_dict.items()):
-        if sg == subgroups[0]:
-            continue
-
-        aff_intersection = intersect_predicate_lists(aff_intersection, RLs, sg)
-    
-    aff_intersection = [(Predicate.from_dict(d), supps) for d, supps in aff_intersection]
     
     # Frequent itemsets for the unaffacted (to be used in the then clauses)
     freq_unaffected, _ = freqitemsets_with_supports(X_unaff, min_support=freqitem_minsupp)
 
     # Filter all if-then pairs to keep only valid
-    print("Computing all valid if-then pairs between the common frequent itemsets of each subgroup of the affected instances and the frequent itemsets of the unaffacted instances.",flush=True)
+    print("Computing all valid if-then pairs between the common frequent itemsets of each subgroup of the affected instances and the frequent itemsets of the unaffacted instances.", flush=True)
     ifthens = [(h, s, ifsupps) for h, ifsupps in tqdm(aff_intersection) for s in freq_unaffected if recIsValid(h, s,drop_infeasible)]
 
     # Calculate incorrectness percentages
-    print("Computing correctenesses for all valid if-thens.",flush=True)
+    print("Computing correctenesses for all valid if-thens.", flush=True)
     ifthens_with_correctness = calculate_correctnesses(ifthens, affected_subgroups, sensitive_attribute, model)
 
     return ifthens_with_correctness
@@ -345,11 +394,11 @@ def cumcorr_all(
     X_affected: DataFrame = X[model.predict(X) == 0] # type: ignore
     ret = {}
     for ifclause, all_thens in rulesbyif.items():
-       all_thens_new = {}
-       for sg, (_cov, thens) in all_thens.items():
-           subgroup_affected = X_affected[X_affected[sensitive_attribute] == sg]
-           all_thens_new[sg] = cumcorr(ifclause, thens, subgroup_affected, model, params=params)
-       ret[ifclause] = all_thens_new
+        all_thens_new = {}
+        for sg, (_cov, thens) in all_thens.items():
+            subgroup_affected = X_affected[X_affected[sensitive_attribute] == sg]
+            all_thens_new[sg] = cumcorr(ifclause, thens, subgroup_affected, model, params=params)
+        ret[ifclause] = all_thens_new
     return ret
 
 
