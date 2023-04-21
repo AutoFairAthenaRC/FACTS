@@ -5,6 +5,8 @@ import functools
 import numpy as np
 from pandas import DataFrame
 
+from mlxtend.preprocessing import minmax_scaling
+
 from .parameters import *
 from .models import ModelAPI
 from .predicate import Predicate, recIsValid, featureChangePred
@@ -164,6 +166,7 @@ def valid_ifthens_with_coverage_correctness(
     # turn RLs into dictionaries for easier comparison
     RLs_supports_dict = {sg: [(dict(zip(p.features, p.values)), supp) for p, supp in zip(*RL_sup)] for sg, RL_sup in RLs_and_supports.items()}
 
+    intersection = [sg for sg, (itemsets, supports) in RLs_and_supports.items()]
     # intersection of frequent itemsets of all sensitive subgroups
     print("Computing the intersection between the frequent itemsets of each subgroup of the affected instances.",flush=True)
     if len(RLs_supports_dict) < 1:
@@ -348,4 +351,37 @@ def cumcorr_all(
            all_thens_new[sg] = cumcorr(ifclause, thens, subgroup_affected, model, params=params)
        ret[ifclause] = all_thens_new
     return ret
+
+
+def feature_change_builder(
+    X: DataFrame,
+    num_cols: List[str],
+    cate_cols: List[str],
+    feature_weights: Dict[str, int],
+    num_normalization: bool = False,
+    feats_to_normalize: Optional[List[str]] = None
+) -> Dict[str, Callable[[Any, Any], int]]:
+    def feature_change_cate(v1, v2, weight):
+        return (0 if v1 == v2 else 1) * weight
+    def feature_change_num(v1, v2, weight):
+        return abs(v1 - v2) * weight
+
+    max_vals = X.max(axis=0)
+    min_vals = X.min(axis=0)
+    weight_multipliers = {}
+    for col in num_cols:
+        weight_multipliers[col] = 1
+    for col in cate_cols:
+        weight_multipliers[col] = 1
+    if num_normalization:
+        if feats_to_normalize is not None:
+            for col in feats_to_normalize:
+                weight_multipliers[col] = 1 / (max_vals[col] - min_vals[col])
+        else:
+            for col in num_cols:
+                weight_multipliers[col] = 1 / (max_vals[col] - min_vals[col])
+
+    ret_cate = {col: functools.partial(feature_change_cate, weight=feature_weights.get(col, 1)) for col in cate_cols}
+    ret_num = {col: functools.partial(feature_change_num, weight=weight_multipliers[col] * feature_weights.get(col, 1)) for col in num_cols}
+    return {**ret_cate, **ret_num}
 
