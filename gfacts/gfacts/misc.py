@@ -9,7 +9,7 @@ from mlxtend.preprocessing import minmax_scaling
 
 from .parameters import *
 from .models import ModelAPI
-from .predicate import Predicate, recIsValid, featureChangePred
+from .predicate import Predicate, recIsValid, featureChangePred , drop_two_above
 from .frequent_itemsets import runApriori, preprocessDataset, aprioriout2predicateList
 from .recourse_sets import TwoLevelRecourseSet
 from .metrics import (
@@ -145,7 +145,8 @@ def valid_ifthens_with_coverage_correctness(
     sensitive_attribute: str,
     freqitem_minsupp: float = 0.01,
     missing_subgroup_val: str = "N/A",
-    drop_infeasible: bool = True
+    drop_infeasible: bool = True,
+    drop_above: bool = True
 ) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
     # throw out all individuals for whom the value of the sensitive attribute is unknown
     X = X[X[sensitive_attribute] != missing_subgroup_val]
@@ -188,7 +189,13 @@ def valid_ifthens_with_coverage_correctness(
 
     # Filter all if-then pairs to keep only valid
     print("Computing all valid if-then pairs between the common frequent itemsets of each subgroup of the affected instances and the frequent itemsets of the unaffacted instances.",flush=True)
-    ifthens = [(h, s, ifsupps) for h, ifsupps in tqdm(aff_intersection) for s in freq_unaffected if recIsValid(h, s,drop_infeasible)]
+    ifthens = [(h, s, ifsupps) for h, ifsupps in tqdm(aff_intersection) for s in freq_unaffected if recIsValid(h, s, affected_subgroups[subgroups[0]], drop_infeasible)]
+
+    #keep ifs that have change on features of max value 2
+    if drop_above == True:
+        age = [val.left for val in X.age.unique()]
+        age.sort()
+        ifthens = [(ifs,then,cov) for ifs,then,cov in ifthens if drop_two_above(ifs,then,age)]
 
     # Calculate incorrectness percentages
     print("Computing correctenesses for all valid if-thens.",flush=True)
@@ -384,4 +391,5 @@ def feature_change_builder(
     ret_cate = {col: functools.partial(feature_change_cate, weight=feature_weights.get(col, 1)) for col in cate_cols}
     ret_num = {col: functools.partial(feature_change_num, weight=weight_multipliers[col] * feature_weights.get(col, 1)) for col in num_cols}
     return {**ret_cate, **ret_num}
+
 
