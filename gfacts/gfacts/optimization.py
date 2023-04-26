@@ -1,4 +1,4 @@
-import itertools
+import functools
 
 from typing import List, Set, Tuple, Dict
 from collections import defaultdict
@@ -14,7 +14,7 @@ from .parameters import ParameterProxy
 ##### Submodular optimization as described in AReS paper.
 
 def ground_set_generation_vanilla(SD: List[Predicate], RL: List[Predicate], X_aff: DataFrame, model: ModelAPI):
-    valid_triples = [(sd, h, s) for sd in SD for h in RL for s in RL if recIsValid(h, s)]
+    valid_triples = [(sd, h, s) for sd in SD for h in RL for s in RL if recIsValid(h, s, X_aff, False)]
     return valid_triples
 
 def optimizer(modulars: List[int], covers: List[Set[int]], N_aff: int, params: ParameterProxy = ParameterProxy()):
@@ -136,7 +136,7 @@ def optimize(
     model: ModelAPI,
     params: ParameterProxy = ParameterProxy()
 ) -> Tuple[List[Tuple[Predicate, Predicate, Predicate]], int, int, int, int]:
-    all_triples = [(sd, h, s) for sd in SD for h in ifs[sd.values[0]] for s in thens[sd.values[0]] if recIsValid(h, s)]
+    all_triples = [(sd, h, s) for sd in SD for h in ifs[sd.values[0]] for s in thens[sd.values[0]] if recIsValid(h, s, X_aff, False)]
     triples_no = len(all_triples)
     print(f"Total triples = {triples_no}")
     all_incorrects = list(-params.lambda_correctness * incorrectRecoursesSingle(sd, h, s, X_aff, model) for sd, h, s in all_triples)
@@ -267,3 +267,50 @@ def sort_triples_by_max_costdiff_ignore_nans_infs(
     else:
         ret = sorted(rulesbyif.items(), key=simple_objective_fn, reverse=True)
     return ret
+
+
+
+def sort_triples_by_max_costdiff_generic(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    ignore_nans: bool = False,
+    ignore_infs: bool = False,
+    secondary_objectives: List[str] = [],
+    **kwargs
+) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]:
+    subgroup_costs = calculate_all_if_subgroup_costs(
+        list(rulesbyif.keys()),
+        list(rulesbyif.values()),
+        **kwargs
+    )
+
+    max_intergroup_cost_diffs = {
+        ifclause: max(subgroup_costs[ifclause].values()) - min(subgroup_costs[ifclause].values())
+        for ifclause, _ in rulesbyif.items()
+    }
+    min_group_costs = {
+        ifclause: min(subgroup_costs[ifclause].values())
+        for ifclause, _ in rulesbyif.items()
+    }
+    max_group_correctness = {
+        ifclause: max(cor for _sg, (_cov, thens) in thenclauses for _then, cor in thens)
+        for ifclause, thenclauses in rulesbyif.items()
+    }
+
+    def objective_fn(ifthens, ignore_nan, ignore_inf, return_indicator):
+        ifclause = ifthens[0]
+        max_costdiff = max_intergroup_cost_diffs[ifclause]
+        if ignore_nan and np.isnan(max_costdiff):
+            max_costdiff = -np.inf
+        if ignore_inf and np.isinf(max_costdiff):
+            max_costdiff = -np.inf
+        
+        optional_rets = {
+            "min-group-cost": -min_group_costs[ifclause],
+            "max-group-corr": max_group_correctness[ifclause]
+        }
+        ret = (max_costdiff,)
+        for i in return_indicator:
+            ret = ret + (optional_rets[i],)
+        return ret
+    
+    return sorted(rulesbyif.items(), key=functools.partial(objective_fn, ignore_nans, ignore_infs, secondary_objectives), reverse=True)

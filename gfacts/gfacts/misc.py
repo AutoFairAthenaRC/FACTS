@@ -23,7 +23,8 @@ from .optimization import (
     optimize_vanilla,
     sort_triples_by_max_costdiff,
     sort_triples_by_max_costdiff_ignore_nans,
-    sort_triples_by_max_costdiff_ignore_nans_infs
+    sort_triples_by_max_costdiff_ignore_nans_infs,
+    sort_triples_by_max_costdiff_generic
 )
 from .rule_filters import filter_by_correctness, filter_contained_rules, delete_fair_rules, keep_only_minimum_change
 
@@ -220,6 +221,9 @@ def valid_ifthens_with_coverage_correctness(
     print("Computing frequent itemsets for each subgroup of the affected instances.", flush=True)
     RLs_and_supports = {sg: freqitemsets_with_supports(affected_sg, min_support=freqitem_minsupp) for sg, affected_sg in tqdm(affected_subgroups.items())}
 
+    # intersection of frequent itemsets of all sensitive subgroups
+    print("Computing the intersection between the frequent itemsets of each subgroup of the affected instances.", flush=True)
+    
     # aff_intersection_1 = aff_intersection_version_1(
     #     RLs_and_supports, subgroups)
     aff_intersection_2 = aff_intersection_version_2(
@@ -230,8 +234,6 @@ def valid_ifthens_with_coverage_correctness(
     #     print("ERRRROOROROROROROROROROROR")
 
     aff_intersection = aff_intersection_2
-
-    # intersection of frequent itemsets of all sensitive subgroups
     
     # Frequent itemsets for the unaffacted (to be used in the then clauses)
     freq_unaffected, _ = freqitemsets_with_supports(X_unaff, min_support=freqitem_minsupp)
@@ -297,7 +299,7 @@ def select_rules_subset(
     top_count: int = 10,
     filter_sequence: Optional[List[str]] = None,
     cor_threshold: float = 0.5,
-    secondary_sorting: bool = False,
+    secondary_sorting_objectives: List[str] = [],
     params: ParameterProxy = ParameterProxy()
 ) -> Tuple[
     Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
@@ -310,10 +312,14 @@ def select_rules_subset(
         "mean-above-thr": functools.partial(if_group_cost_mean_change_correctness_threshold, cor_thres=cor_threshold),
         "num-above-thr": functools.partial(if_group_cost_recoursescount_correctness_threshold, cor_thres=cor_threshold)
     }
+    secondary_sort_min_group_cost = "min-group-cost" in secondary_sorting_objectives
     sorting_functions = {
         "abs-diff-decr": sort_triples_by_max_costdiff,
-        "abs-diff-decr-ignore-forall-subgroups-empty": functools.partial(sort_triples_by_max_costdiff_ignore_nans, use_secondary_objective=secondary_sorting),
-        "abs-diff-decr-ignore-exists-subgroup-empty": functools.partial(sort_triples_by_max_costdiff_ignore_nans_infs, use_secondary_objective=secondary_sorting)
+        "abs-diff-decr-ignore-forall-subgroups-empty": functools.partial(sort_triples_by_max_costdiff_ignore_nans, use_secondary_objective=secondary_sort_min_group_cost),
+        "abs-diff-decr-ignore-exists-subgroup-empty": functools.partial(sort_triples_by_max_costdiff_ignore_nans_infs, use_secondary_objective=secondary_sort_min_group_cost),
+        "generic-sorting": functools.partial(sort_triples_by_max_costdiff_generic, ignore_nans=False, ignore_infs=False, secondary_objectives=secondary_sorting_objectives),
+        "generic-sorting-ignore-forall-subgroups-empty": functools.partial(sort_triples_by_max_costdiff_generic, ignore_nans=True, ignore_infs=False, secondary_objectives=secondary_sorting_objectives),
+        "generic-sorting-ignore-exists-subgroup-empty": functools.partial(sort_triples_by_max_costdiff_generic, ignore_nans=True, ignore_infs=True, secondary_objectives=secondary_sorting_objectives),
     }
     metric_fn = metrics[metric]
     sort_fn = sorting_functions[sort_strategy]
@@ -332,7 +338,7 @@ def select_rules_subset(
 
     # step 3 (optional): filtering
     filters: Dict[str, Callable[[Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]], Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]]] = {
-        "remove-contained": filter_contained_rules,
+        "remove-contained": functools.partial(filter_contained_rules, subgroup_costs=costs),
         "remove-below-thr": functools.partial(filter_by_correctness, threshold=cor_threshold),
         "remove-fair-rules": functools.partial(delete_fair_rules, subgroup_costs=costs),
         "keep-only-min-change": functools.partial(keep_only_minimum_change, params=params)

@@ -19,12 +19,17 @@ def filter_by_correctness(
         ret[ifclause] = filtered_thenclauses
     return ret
 
+# TODO: implementation is slightly incorrect. Should create partition of ifs where each if has a "subsumes" relationship with at least another.
+# essentially, if "subsumes" is a graph, it is transient, and we want weakly connected components
 def filter_contained_rules(
-    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    subgroup_costs: Dict[Predicate, Dict[str, float]]
 ) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]:
     ret = dict()
+    cost_values = {subgroup: costs.values() for subgroup, costs in subgroup_costs.items()}
+    bias_measures = {subgroup: max(costs) - min(costs) for subgroup, costs in cost_values.items()}
+    flags_keep = {subgroup: True for subgroup, _thens in rulesbyif.items()}
     for ifclause, thenclauses in rulesbyif.items():
-        flag_keep = True
         allthens = [then for _sg, (_cov, sg_thens) in thenclauses.items() for then, _cor in sg_thens]
         for otherif, _ in rulesbyif.items():
             if not ifclause.contains(otherif):
@@ -32,11 +37,16 @@ def filter_contained_rules(
             extra_features = list(set(ifclause.features) - set(otherif.features))
             if len(extra_features) == 0:
                 continue
-            allthens_relevant_values = [tuple(then.to_dict()[feat] for feat in extra_features) for then in allthens]
-            if Series(allthens_relevant_values).unique().size == 1:
-                flag_keep = False
-
-        if flag_keep:
+            if_and_allthens_relevant_values = [tuple(then.to_dict()[feat] for feat in extra_features) for then in allthens]
+            if_and_allthens_relevant_values.append(tuple(ifclause.to_dict()[feat] for feat in extra_features))
+            if Series(if_and_allthens_relevant_values).unique().size == 1:
+                if bias_measures[ifclause] > bias_measures[otherif]:
+                    flags_keep[otherif] = False
+                else:
+                    flags_keep[ifclause] = False
+    
+    for ifclause, thenclauses in rulesbyif.items():
+        if flags_keep[ifclause]:
             ret[ifclause] = thenclauses
     return ret
 
