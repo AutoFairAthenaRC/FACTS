@@ -297,13 +297,50 @@ def valid_ifthens_with_coverage_correctness(
         "Computing all valid if-then pairs between the common frequent itemsets of each subgroup of the affected instances and the frequent itemsets of the unaffacted instances.",
         flush=True,
     )
-    ifthens = [
-        (h, s, ifsupps)
-        for h, ifsupps in tqdm(aff_intersection)
-        for s in freq_unaffected
-        if recIsValid(h, s, affected_subgroups[subgroups[0]], drop_infeasible)
-    ]
 
+    # ifthens_1 = [
+    #     (h, s, ifsupps)
+    #     for h, ifsupps in tqdm(aff_intersection)
+    #     for s in freq_unaffected
+    #     if recIsValid(h, s, affected_subgroups[subgroups[0]], drop_infeasible)
+    # ]
+
+    # we want to create a dictionary for freq_unaffected key: features in tuple, value: list(values)
+    # for each Predicate in aff_intersection we loop through the list from dictionary
+    # create dictionary:
+
+    freq_unaffected_dict = {}
+    for predicate_ in freq_unaffected:
+        if tuple(predicate_.features) in freq_unaffected_dict:
+            freq_unaffected_dict[tuple(predicate_.features)].append(predicate_.values)
+        else:
+            freq_unaffected_dict[tuple(predicate_.features)] = [predicate_.values]
+
+    ifthens_2 = []
+    for predicate_, supps_dict in tqdm(aff_intersection):
+        candidates = freq_unaffected_dict.get(tuple(predicate_.features))
+        if candidates == None:
+            continue
+        for candidate_values in candidates:
+            # resIsValid can be changed to avoid checking if features are the same
+            if recIsValid(
+                predicate_,
+                Predicate(predicate_.features, candidate_values),
+                affected_subgroups[subgroups[0]],
+                drop_infeasible,
+            ):
+                ifthens_2.append(
+                    (
+                        predicate_,
+                        Predicate(predicate_.features, candidate_values),
+                        supps_dict,
+                    )
+                )
+    # print(len(ifthens_1), len(ifthens_2))
+    # if ifthens_1 != ifthens_2:
+    #     print("ERORORORORORORO")
+
+    ifthens = ifthens_2
     # keep ifs that have change on features of max value 2
     if drop_above == True:
         age = [val.left for val in X.age.unique()]
