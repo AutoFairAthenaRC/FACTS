@@ -292,7 +292,7 @@ def sort_triples_by_max_costdiff_generic(
         for ifclause, _ in rulesbyif.items()
     }
     max_group_correctness = {
-        ifclause: max(cor for _sg, (_cov, thens) in thenclauses for _then, cor in thens)
+        ifclause: max(cor for _sg, (_cov, thens) in thenclauses.items() for _then, cor in thens)
         for ifclause, thenclauses in rulesbyif.items()
     }
 
@@ -313,4 +313,4 @@ def sort_triples_by_max_costdiff_generic(
             ret = ret + (optional_rets[i],)
         return ret
     
-    return sorted(rulesbyif.items(), key=functools.partial(objective_fn, ignore_nans, ignore_infs, secondary_objectives), reverse=True)
+    return sorted(rulesbyif.items(), key=functools.partial(objective_fn, ignore_nan=ignore_nans, ignore_inf=ignore_infs, return_indicator=secondary_objectives), reverse=True)
