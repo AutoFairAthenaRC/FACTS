@@ -285,6 +285,7 @@ def valid_ifthens_with_coverage_correctness(
     # if check_list_eq(aff_intersection_1, aff_intersection_2):
     #     print("ERRRROOROROROROROROROROROR")
 
+    
     aff_intersection = aff_intersection_2
 
     # Frequent itemsets for the unaffacted (to be used in the then clauses)

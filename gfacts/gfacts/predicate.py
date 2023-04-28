@@ -124,7 +124,7 @@ def recIsValid(p1: Predicate, p2: Predicate,X: DataFrame ,drop_infeasible: bool)
     existsChange = any(map(operator.ne, p1.values, p2.values))
     
     if n1 == len(X.columns) and all(map(operator.ne, p1.values, p2.values)):
-        return False
+         return False
 
     if drop_infeasible == True:
         if all(map(operator.eq, p1.features, p2.features)) and any(map(operator.ne, p1.values, p2.values)):
@@ -135,6 +135,9 @@ def recIsValid(p1: Predicate, p2: Predicate,X: DataFrame ,drop_infeasible: bool)
                 elif feat == 'education-num':
                     edu_change = p1.values[count] <= p2.values[count]
                     feat_change = feat_change and edu_change
+                elif feat == 'PREDICTOR RAT AGE AT LATEST ARREST':
+                    age_change = p1.values[count] <= p2.values[count]
+                    feat_change = feat_change and age_change
             return feat_change
         else: return False
     else:
@@ -149,6 +152,9 @@ def drop_two_above(p1: Predicate, p2: Predicate,l: list) -> bool:
             feat_change = feat_change and edu_change
         elif feat == 'age':
             age_change = l.index(p2.values[count].left) - l.index(p1.values[count].left) <=2
+            feat_change = feat_change and age_change
+        elif feat == 'PREDICTOR RAT AGE AT LATEST ARREST':
+            age_change = l.index(p2.values[count]) - l.index(p1.values[count]) <=2
             feat_change = feat_change and age_change
 
     return feat_change
