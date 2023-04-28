@@ -369,7 +369,7 @@ def select_rules_subset(
     metric: str = "weighted-average",
     sort_strategy: str = "abs-diff-decr",
     top_count: int = 10,
-    filter_sequence: Optional[List[str]] = None,
+    filter_sequence: List[str] = [],
     cor_threshold: float = 0.5,
     secondary_sorting_objectives: List[str] = [],
     params: ParameterProxy = ParameterProxy(),
@@ -456,9 +456,8 @@ def select_rules_subset(
             keep_only_minimum_change, params=params
         ),
     }
-    if filter_sequence is not None:
-        for filter in filter_sequence:
-            top_rules = filters[filter](top_rules)
+    for single_filter in filter_sequence:
+        top_rules = filters[single_filter](top_rules)
 
     return top_rules, costs
 
