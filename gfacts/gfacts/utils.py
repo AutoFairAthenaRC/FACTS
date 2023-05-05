@@ -3,7 +3,7 @@ import dill
 from pathlib import Path
 from os import PathLike
 
-from predicate import Predicate
+from gfacts import Predicate
 
 def load_rules_by_if(file: PathLike) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]:
     p = Path(file)
