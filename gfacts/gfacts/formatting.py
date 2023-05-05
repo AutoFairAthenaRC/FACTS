@@ -262,11 +262,19 @@ def ifthen2str(
 def plot_aggregate_correctness(
     costs_cors_per_subgroup: Dict[str, Tuple[List[float], List[float]]]
 ):
+    subgroup_markers = {sg: (index, 0, 0) for index, sg in enumerate(costs_cors_per_subgroup.keys(), start=3)}
     fig, ax = plt.subplots()
     lines = []
     labels = []
     for sg, (costs, correctnesses) in costs_cors_per_subgroup.items():
-        line, = ax.plot(costs, correctnesses, marker="o", label=sg, alpha=0.7)
+        line, = ax.step(
+            costs,
+            correctnesses,
+            where="post",
+            marker=subgroup_markers[sg],
+            label=sg,
+            alpha=0.7
+        )
         lines.append(line)
         labels.append(sg)
     ax.set_xlabel("Cost of change")
