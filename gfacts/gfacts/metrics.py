@@ -185,6 +185,21 @@ def if_group_cost_change_cumulative_threshold(
         ret = np.inf
     return ret
 
+def if_group_average_recourse_cost(
+    ifclause: Predicate,
+    thens: List[Tuple[Predicate, float, float]],
+    correctness_caps: Dict[Predicate, float],
+    c_infty_coeff: float = 2.,
+    params: ParameterProxy = ParameterProxy()
+) -> float:
+    cumulative_corrs = np.array([corr for then, corr, cost in thens])
+    costs = np.array([cost for then, corr, cost in thens])
+
+    corr_diffs = np.diff(cumulative_corrs, prepend=0)
+
+    ret = np.dot(corr_diffs, costs) + (correctness_caps[ifclause] - cumulative_corrs[-1]) * c_infty_coeff * costs.max()
+
+    return ret
 
 ##### Aggregations of if-group cost for all subgroups and for all if-groups in a list
 

@@ -22,7 +22,8 @@ from .metrics import (
     calculate_all_if_subgroup_costs,
     calculate_all_if_subgroup_costs_cumulative,
     if_group_cost_min_change_correctness_cumulative_threshold,
-    if_group_cost_change_cumulative_threshold
+    if_group_cost_change_cumulative_threshold,
+    if_group_average_recourse_cost
 )
 from .optimization import (
     optimize_vanilla,
@@ -527,6 +528,13 @@ def select_rules_subset_cumulative(
         ),
         "min-above-cost": functools.partial(
             if_group_cost_change_cumulative_threshold, cost_thres=cost_threshold
+        ),
+        "fairness-of-mean-recourse": functools.partial(
+            if_group_average_recourse_cost,
+            correctness_caps={
+                ifc: max(corr for _sg, (_cov, thens) in thencs.items() for _then, corr, _cost in thens)
+                for ifc, thencs in rulesbyif.items() 
+            }
         )
     }
     sorting_functions = {
