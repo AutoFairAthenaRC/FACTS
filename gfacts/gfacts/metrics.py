@@ -147,6 +147,12 @@ def if_group_cost_recoursescount_correctness_threshold(
         ])
     return -feature_changes.size
 
+def if_group_total_correctness(
+    ifclause: Predicate,
+    then_corrs_costs: List[Tuple[Predicate, float, float]],
+    params: ParameterProxy = ParameterProxy()
+) -> float:
+    return max(cor for _then, cor, _cost in then_corrs_costs)
 
 ##### Aggregations of if-group cost for all subgroups and for all if-groups in a list
 
@@ -170,6 +176,26 @@ def calculate_all_if_subgroup_costs(
         ret[ifclause] = calculate_if_subgroup_costs(ifclause, thenclauses, **kwargs)
     return ret
 
+##### The same, but for the metrics definitions of Dimitris Sacharidis
+if_group_cost_f_t_cumulative = Callable[[Predicate, List[Tuple[Predicate, float, float]]], float]
+
+def calculate_if_subgroup_costs_cumulative(
+    ifclause: Predicate,
+    thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]],
+    group_calculator: if_group_cost_f_t_cumulative = if_group_total_correctness,
+    **kwargs
+) -> Dict[str, float]:
+    return {sg: group_calculator(ifclause, thens, **kwargs) for sg, (_cov, thens) in thenclauses.items()}
+
+def calculate_all_if_subgroup_costs_cumulative(
+    ifclauses: List[Predicate],
+    all_thenclauses: List[Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+    **kwargs
+) -> Dict[Predicate, Dict[str, float]]:
+    ret: Dict[Predicate, Dict[str, float]] = {}
+    for ifclause, thenclauses in zip(ifclauses, all_thenclauses):
+        ret[ifclause] = calculate_if_subgroup_costs_cumulative(ifclause, thenclauses, **kwargs)
+    return ret
 
 ##### Calculations of discrepancies between the costs of different subgroups (for the same if-group)
 

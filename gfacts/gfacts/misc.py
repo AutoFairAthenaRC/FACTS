@@ -18,6 +18,9 @@ from .metrics import (
     if_group_cost_min_change_correctness_threshold,
     if_group_cost_mean_change_correctness_threshold,
     if_group_cost_recoursescount_correctness_threshold,
+    if_group_total_correctness,
+    calculate_all_if_subgroup_costs,
+    calculate_all_if_subgroup_costs_cumulative
 )
 from .optimization import (
     optimize_vanilla,
@@ -25,18 +28,21 @@ from .optimization import (
     sort_triples_by_max_costdiff_ignore_nans,
     sort_triples_by_max_costdiff_ignore_nans_infs,
     sort_triples_by_max_costdiff_generic,
+    sort_triples_by_max_costdiff_generic_cumulative
 )
 from .rule_filters import (
     filter_by_correctness,
     filter_contained_rules,
     delete_fair_rules,
     keep_only_minimum_change,
+    filter_by_correctness_cumulative,
+    filter_contained_rules_cumulative,
+    delete_fair_rules_cumulative,
+    keep_only_minimum_change_cumulative
 )
 
 # Re-exporting
-from .metrics import calculate_all_if_subgroup_costs
 from .formatting import plot_aggregate_correctness, print_recourse_report
-
 # Re-exporting
 
 
@@ -382,22 +388,17 @@ def rulesbyif2rules(
 ) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
     rules: List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]] = []
     for ifclause, thenclauses in rules_by_if.items():
-        then_covs = dict()
-        then_cors = dict()
+        then_covs_cors = dict()
         for sg, (cov, thens) in thenclauses.items():
             for then, cor in thens:
-                if then in then_covs:
-                    then_covs[then][sg] = cov
+                if then in then_covs_cors:
+                    then_covs_cors[then][0][sg] = cov
+                    then_covs_cors[then][1][sg] = cor
                 else:
-                    then_covs[then] = {sg: cov}
-                if then in then_cors:
-                    then_cors[then][sg] = cor
-                else:
-                    then_cors[then] = {sg: cor}
+                    then_covs_cors[then] = ({sg: cov}, {sg: cor})
 
-        for sg, (_cov, thens) in thenclauses.items():
-            for then, _cor in thens:
-                rules.append((ifclause, then, then_covs[then], then_cors[then]))
+        for then, covs_cors in then_covs_cors.items():
+            rules.append((ifclause, then, covs_cors[0], covs_cors[1]))
     return rules
 
 
@@ -498,27 +499,91 @@ def select_rules_subset(
 
     return top_rules, costs
 
-
-def sort_thens_by_cost(
-    ifclause: Predicate,
-    thenclauses: List[Tuple[Predicate, float]],
+def select_rules_subset_cumulative(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+    metric: str = "weighted-average",
+    sort_strategy: str = "abs-diff-decr",
+    top_count: int = 10,
+    filter_sequence: List[str] = [],
+    cor_threshold: float = 0.5,
+    secondary_sorting_objectives: List[str] = [],
     params: ParameterProxy = ParameterProxy(),
-) -> List[Tuple[Predicate, float, float]]:
-    withcosts = [
-        (thenclause, cor, float(featureChangePred(ifclause, thenclause, params)))
-        for thenclause, cor in thenclauses
-    ]
-    thens_sorted_by_cost = sorted(withcosts, key=lambda c: (c[2], -c[1]))
-    return thens_sorted_by_cost
+) -> Tuple[
+    Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+    Dict[Predicate, Dict[str, float]],
+]:
+    # step 1: sort according to metric
+    metrics: Dict[
+        str, Callable[[Predicate, List[Tuple[Predicate, float, float]]], float]
+    ] = {
+        "total-correctness": if_group_total_correctness
+    }
+    sorting_functions = {
+        "generic-sorting": functools.partial(
+            sort_triples_by_max_costdiff_generic_cumulative,
+            ignore_nans=False,
+            ignore_infs=False,
+            secondary_objectives=secondary_sorting_objectives,
+        ),
+        "generic-sorting-ignore-forall-subgroups-empty": functools.partial(
+            sort_triples_by_max_costdiff_generic_cumulative,
+            ignore_nans=True,
+            ignore_infs=False,
+            secondary_objectives=secondary_sorting_objectives,
+        ),
+        "generic-sorting-ignore-exists-subgroup-empty": functools.partial(
+            sort_triples_by_max_costdiff_generic_cumulative,
+            ignore_nans=True,
+            ignore_infs=True,
+            secondary_objectives=secondary_sorting_objectives,
+        ),
+    }
+    metric_fn = metrics[metric]
+    sort_fn = sorting_functions[sort_strategy]
+    rules_sorted = sort_fn(rulesbyif, group_calculator=metric_fn, params=params)
 
+    # step 2: keep only top k rules
+    top_rules = dict(rules_sorted[:top_count])
 
-def cumcorr(
+    # keep also the aggregate costs of the then-blocks of the top rules
+    costs = calculate_all_if_subgroup_costs_cumulative(
+        list(rulesbyif.keys()),
+        list(rulesbyif.values()),
+        group_calculator=metric_fn,
+        params=params,
+    )
+
+    # step 3 (optional): filtering
+    filters: Dict[
+        str,
+        Callable[
+            [Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]],
+            Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+        ],
+    ] = {
+        "remove-contained": functools.partial(
+            filter_contained_rules_cumulative, subgroup_costs=costs
+        ),
+        "remove-below-thr": functools.partial(
+            filter_by_correctness_cumulative, threshold=cor_threshold
+        ),
+        "remove-fair-rules": functools.partial(delete_fair_rules_cumulative, subgroup_costs=costs),
+        "keep-only-min-change": functools.partial(
+            keep_only_minimum_change_cumulative, params=params
+        ),
+    }
+    for single_filter in filter_sequence:
+        top_rules = filters[single_filter](top_rules)
+
+    return top_rules, costs
+
+def cum_corr_costs(
     ifclause: Predicate,
     thenclauses: List[Tuple[Predicate, float]],
     X: DataFrame,
     model: ModelAPI,
     params: ParameterProxy = ParameterProxy(),
-) -> List[Tuple[float, float]]:
+) -> List[Tuple[Predicate, float, float]]:
     withcosts = [
         (thenclause, cor, featureChangePred(ifclause, thenclause, params))
         for thenclause, cor in thenclauses
@@ -544,32 +609,47 @@ def cumcorr(
 
     cumcorrs = np.array(cumcorrs).cumsum() / covered_count
     updated_thens = [
-        (cumcor, float(cost))
-        for (_thenclause, _cor, cost), cumcor in zip(thens_sorted_by_cost, cumcorrs)
+        (thenclause, cumcor, float(cost))
+        for (thenclause, _cor, cost), cumcor in zip(thens_sorted_by_cost, cumcorrs)
     ]
 
     return updated_thens
 
 
-def cumcorr_all(
+def cum_corr_costs_all(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    X: DataFrame,
+    model: ModelAPI,
+    sensitive_attribute: str,
+    params: ParameterProxy = ParameterProxy(),
+) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]:
+    X_affected: DataFrame = X[model.predict(X) == 0]  # type: ignore
+    ret: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]] = {}
+    for ifclause, all_thens in tqdm(rulesbyif.items()):
+        all_thens_new: Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]] = {}
+        for sg, (cov, thens) in all_thens.items():
+            subgroup_affected = X_affected[X_affected[sensitive_attribute] == sg]
+            all_thens_new[sg] = (cov, cum_corr_costs(
+                ifclause, thens, subgroup_affected, model, params=params
+            ))
+        ret[ifclause] = all_thens_new
+    return ret
+
+def cum_corr_costs_all_minimal(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
     X: DataFrame,
     model: ModelAPI,
     sensitive_attribute: str,
     params: ParameterProxy = ParameterProxy(),
 ) -> Dict[Predicate, Dict[str, List[Tuple[float, float]]]]:
-    X_affected: DataFrame = X[model.predict(X) == 0]  # type: ignore
-    ret = {}
-    for ifclause, all_thens in rulesbyif.items():
-        all_thens_new = {}
-        for sg, (_cov, thens) in all_thens.items():
-            subgroup_affected = X_affected[X_affected[sensitive_attribute] == sg]
-            all_thens_new[sg] = cumcorr(
-                ifclause, thens, subgroup_affected, model, params=params
-            )
-        ret[ifclause] = all_thens_new
+    full_rules = cum_corr_costs_all(rulesbyif, X, model, sensitive_attribute, params)
+    ret: Dict[Predicate, Dict[str, List[Tuple[float, float]]]] = {}
+    for ifclause, all_thens in full_rules.items():
+        ret[ifclause] = {}
+        for sg, (cov, thens) in all_thens.items():
+            thens_plain = [(corr, cost) for _then, corr, cost in thens]
+            ret[ifclause][sg] = thens_plain
     return ret
-
 
 def feature_change_builder(
     X: DataFrame,

@@ -103,7 +103,6 @@ def featureChangePred(p1: Predicate, p2: Predicate, params: ParameterProxy = Par
         total += costChange
     return total
 
-#def recIsValid(p1: Predicate, p2: Predicate) -> bool:
 # def recIsValid(p1: Predicate, p2: Predicate) -> bool:
 #     n1 = len(p1.features)
 #     n2 = len(p2.features)

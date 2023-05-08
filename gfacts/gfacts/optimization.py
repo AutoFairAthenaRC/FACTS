@@ -8,7 +8,13 @@ from pandas import DataFrame
 
 from .predicate import Predicate, featureChangePred, featureCostPred, recIsValid
 from .models import ModelAPI
-from .metrics import incorrectRecoursesSingle, calculate_cost_difference_2groups, max_intergroup_cost_diff, calculate_all_if_subgroup_costs
+from .metrics import (
+    incorrectRecoursesSingle,
+    calculate_cost_difference_2groups,
+    max_intergroup_cost_diff,
+    calculate_all_if_subgroup_costs,
+    calculate_all_if_subgroup_costs_cumulative
+)
 from .parameters import ParameterProxy
 
 ##### Submodular optimization as described in AReS paper.
@@ -293,6 +299,51 @@ def sort_triples_by_max_costdiff_generic(
     }
     max_group_correctness = {
         ifclause: max(cor for _sg, (_cov, thens) in thenclauses.items() for _then, cor in thens)
+        for ifclause, thenclauses in rulesbyif.items()
+    }
+
+    def objective_fn(ifthens, ignore_nan, ignore_inf, return_indicator):
+        ifclause = ifthens[0]
+        max_costdiff = max_intergroup_cost_diffs[ifclause]
+        if ignore_nan and np.isnan(max_costdiff):
+            max_costdiff = -np.inf
+        if ignore_inf and np.isinf(max_costdiff):
+            max_costdiff = -np.inf
+        
+        optional_rets = {
+            "min-group-cost": -min_group_costs[ifclause],
+            "max-group-corr": max_group_correctness[ifclause]
+        }
+        ret = (max_costdiff,)
+        for i in return_indicator:
+            ret = ret + (optional_rets[i],)
+        return ret
+    
+    return sorted(rulesbyif.items(), key=functools.partial(objective_fn, ignore_nan=ignore_nans, ignore_inf=ignore_infs, return_indicator=secondary_objectives), reverse=True)
+
+def sort_triples_by_max_costdiff_generic_cumulative(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+    ignore_nans: bool = False,
+    ignore_infs: bool = False,
+    secondary_objectives: List[str] = [],
+    **kwargs
+) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]]:
+    subgroup_costs = calculate_all_if_subgroup_costs_cumulative(
+        list(rulesbyif.keys()),
+        list(rulesbyif.values()),
+        **kwargs
+    )
+
+    max_intergroup_cost_diffs = {
+        ifclause: max(subgroup_costs[ifclause].values()) - min(subgroup_costs[ifclause].values())
+        for ifclause, _ in rulesbyif.items()
+    }
+    min_group_costs = {
+        ifclause: min(subgroup_costs[ifclause].values())
+        for ifclause, _ in rulesbyif.items()
+    }
+    max_group_correctness = {
+        ifclause: max(cor for _sg, (_cov, thens) in thenclauses.items() for _then, cor, _cost in thens)
         for ifclause, thenclauses in rulesbyif.items()
     }
 
