@@ -365,3 +365,39 @@ def sort_triples_by_max_costdiff_generic_cumulative(
         return ret
     
     return sorted(rulesbyif.items(), key=functools.partial(objective_fn, ignore_nan=ignore_nans, ignore_inf=ignore_infs, return_indicator=secondary_objectives), reverse=True)
+
+
+def sort_triples_KStest(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+    affected_population_sizes: Dict[str, int],
+    alpha: float = 0.95
+) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]]:
+    def calculate_test(ifclause: Predicate, thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]):
+        if len(thenclauses) != 2:
+            raise NotImplementedError("Definitions only for two protected subgroups")
+        
+        sgs = list(thenclauses.keys())
+        sg1 = sgs[0]
+        sg2 = sgs[1]
+        corrs1 = np.array([corr for then, corr, cost in thenclauses[sg1][1]])
+        corrs2 = np.array([corr for then, corr, cost in thenclauses[sg2][1]])
+        lhs: float = abs(corrs1 - corrs2).max()
+
+        cov1 = thenclauses[sg1][0]
+        cov2 = thenclauses[sg2][0]
+        affected_sg1 = cov1 * affected_population_sizes[sg1]
+        affected_sg2 = cov2 * affected_population_sizes[sg2]
+        rhs: float = np.sqrt(- np.log(alpha / 2) * (1/2) * ((1 / affected_sg1) + (1 / affected_sg2)))
+
+        return lhs, rhs
+
+    unfair_rules: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]] = {}
+    unfairness: Dict[Predicate, float] = {}
+    for ifclause, thenclauses in rulesbyif.items():
+        lhs, rhs = calculate_test(ifclause, thenclauses)
+        if lhs < rhs:
+            continue
+        unfair_rules[ifclause] = thenclauses
+        unfairness[ifclause] = lhs - rhs
+    
+    return sorted(unfair_rules.items(), key=lambda ifthens: unfairness[ifthens[0]], reverse=True)

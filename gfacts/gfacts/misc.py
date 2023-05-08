@@ -30,7 +30,8 @@ from .optimization import (
     sort_triples_by_max_costdiff_ignore_nans,
     sort_triples_by_max_costdiff_ignore_nans_infs,
     sort_triples_by_max_costdiff_generic,
-    sort_triples_by_max_costdiff_generic_cumulative
+    sort_triples_by_max_costdiff_generic_cumulative,
+    sort_triples_KStest
 )
 from .rule_filters import (
     filter_by_correctness,
@@ -504,7 +505,7 @@ def select_rules_subset(
 
 def select_rules_subset_cumulative(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
-    metric: str = "weighted-average",
+    metric: str = "total-correctness",
     sort_strategy: str = "abs-diff-decr",
     top_count: int = 10,
     filter_sequence: List[str] = [],
@@ -589,6 +590,20 @@ def select_rules_subset_cumulative(
         top_rules = filters[single_filter](top_rules)
 
     return top_rules, costs
+
+def select_rules_subset_KStest(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+    affected_population_sizes: Dict[str, int],
+    confidence_level: float = 0.95,
+    top_count: int = 10
+) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]:
+    # step 1: sort according to metric
+    rules_sorted = sort_triples_KStest(rulesbyif, affected_population_sizes, confidence_level)
+
+    # step 2: keep only top k rules
+    top_rules = dict(rules_sorted[:top_count])
+
+    return top_rules
 
 def cum_corr_costs(
     ifclause: Predicate,
