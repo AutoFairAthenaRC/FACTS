@@ -154,6 +154,38 @@ def if_group_total_correctness(
 ) -> float:
     return max(cor for _then, cor, _cost in then_corrs_costs)
 
+def if_group_cost_min_change_correctness_cumulative_threshold(
+    ifclause: Predicate,
+    then_corrs_costs: List[Tuple[Predicate, float, float]],
+    cor_thres: float = 0.5,
+    params: ParameterProxy = ParameterProxy()
+) -> float:
+    costs = np.array([
+        cost for _then, cor, cost in then_corrs_costs if cor >= cor_thres
+        ])
+    if costs.size > 0:
+        ret = costs.min()
+    else:
+        ret = np.inf
+    return ret
+
+def if_group_cost_change_cumulative_threshold(
+    ifclause: Predicate,
+    then_corrs_costs: List[Tuple[Predicate, float, float]],
+    cor_thres: float = 0.5,
+    cost_thres: float = 0.5,
+    params: ParameterProxy = ParameterProxy()
+) -> float:
+    corrs = np.array([
+        cor for _then, cor, cost in then_corrs_costs if cost <= cost_thres
+        ])
+    if corrs.size > 0:
+        ret = corrs.max()
+    else:
+        ret = np.inf
+    return ret
+
+
 ##### Aggregations of if-group cost for all subgroups and for all if-groups in a list
 
 if_group_cost_f_t = Callable[[Predicate, List[Tuple[Predicate, float]]], float]

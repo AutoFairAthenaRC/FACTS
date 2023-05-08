@@ -226,7 +226,8 @@ def print_recourse_report_cumulative(
     show_subgroup_costs: bool = False,
     show_then_costs: bool = False,
     show_cumulative_plots: bool = False,
-    show_bias: Optional[str] = None
+    show_bias: Optional[str] = None,
+    correctness_metric : bool = False
 ) -> None:
     if len(rules) == 0:
         print(f"{Style.BRIGHT}With the given parameters, no recourses showing unfairness have been found!{Style.RESET_ALL}")
@@ -265,7 +266,7 @@ def print_recourse_report_cumulative(
                 print(f"\t\tMake {Style.BRIGHT}{thenstr}{Style.RESET_ALL} with correctness {cor_str}", end="")
 
                 if show_then_costs:
-                    print(f" and counterfactual cost = {cost}.", end="")
+                    print(f" and counterfactual cost = {round(cost,2)}", end="")
                 print(".")
 
             if subgroup_costs is not None and show_subgroup_costs:
@@ -277,10 +278,14 @@ def print_recourse_report_cumulative(
         # TODO: show bias message in (much) larger font size.
         if subgroup_costs is not None:
             curr_subgroup_costs = subgroup_costs[ifclause]
-            max_intergroup_cost_diff = max(curr_subgroup_costs.values()) - min(curr_subgroup_costs.values())
-            biased_subgroup, max_cost = max(curr_subgroup_costs.items(), key=lambda p: p[1])
+            if correctness_metric == False:
+                max_intergroup_cost_diff = max(curr_subgroup_costs.values()) - min(curr_subgroup_costs.values())
+                biased_subgroup, max_cost = max(curr_subgroup_costs.items(), key=lambda p: p[1])
+            else: 
+                max_intergroup_cost_diff = max(curr_subgroup_costs.values()) - min(curr_subgroup_costs.values())
+                biased_subgroup, max_cost = min(curr_subgroup_costs.items(), key=lambda p: p[1])
             if max_intergroup_cost_diff > 0:
-                print(f"\t{Fore.MAGENTA}Bias against {biased_subgroup}. Unfairness measure = {round(max_intergroup_cost_diff,2)}.{Fore.RESET}")
+                print(f"\t{Fore.MAGENTA}Bias against {biased_subgroup}. Unfairness measure = {round(max_intergroup_cost_diff,3)}.{Fore.RESET}")
             else:
                 print(f"\t{Fore.MAGENTA}No bias!{Fore.RESET}")
 

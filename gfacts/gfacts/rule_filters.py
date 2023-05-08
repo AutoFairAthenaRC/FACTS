@@ -94,6 +94,20 @@ def filter_by_correctness_cumulative(
         ret[ifclause] = filtered_thenclauses
     return ret
 
+def filter_by_cost_cumulative(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+    threshold: float = 0.5
+) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]:
+    # ret = {ifclause: {sg: (cov, [(then, cor) for then, cor in thens if cor >= threshold]) for sg, (cov, thens) in thenclauses.items()} for ifclause, thenclauses in rulesbyif.items()}
+    ret = dict()
+    for ifclause, thenclauses in rulesbyif.items():
+        filtered_thenclauses = dict()
+        for sg, (cov, sg_thens) in thenclauses.items():
+            filtered_thens = [(then, cor, cost) for then, cor, cost in sg_thens if cost <= threshold]
+            filtered_thenclauses[sg] = (cov, filtered_thens)
+        ret[ifclause] = filtered_thenclauses
+    return ret
+
 # TODO: implementation is slightly incorrect. Should create partition of ifs where each if has a "subsumes" relationship with at least another.
 # essentially, if "subsumes" is a graph, it is transient, and we want weakly connected components
 def filter_contained_rules_cumulative(

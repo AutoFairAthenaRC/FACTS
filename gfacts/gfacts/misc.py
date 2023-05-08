@@ -20,7 +20,9 @@ from .metrics import (
     if_group_cost_recoursescount_correctness_threshold,
     if_group_total_correctness,
     calculate_all_if_subgroup_costs,
-    calculate_all_if_subgroup_costs_cumulative
+    calculate_all_if_subgroup_costs_cumulative,
+    if_group_cost_min_change_correctness_cumulative_threshold,
+    if_group_cost_change_cumulative_threshold
 )
 from .optimization import (
     optimize_vanilla,
@@ -37,6 +39,7 @@ from .rule_filters import (
     keep_only_minimum_change,
     filter_by_correctness_cumulative,
     filter_contained_rules_cumulative,
+    filter_by_cost_cumulative,
     delete_fair_rules_cumulative,
     keep_only_minimum_change_cumulative
 )
@@ -506,6 +509,7 @@ def select_rules_subset_cumulative(
     top_count: int = 10,
     filter_sequence: List[str] = [],
     cor_threshold: float = 0.5,
+    cost_threshold: float = 0.5,
     secondary_sorting_objectives: List[str] = [],
     params: ParameterProxy = ParameterProxy(),
 ) -> Tuple[
@@ -516,7 +520,13 @@ def select_rules_subset_cumulative(
     metrics: Dict[
         str, Callable[[Predicate, List[Tuple[Predicate, float, float]]], float]
     ] = {
-        "total-correctness": if_group_total_correctness
+        "total-correctness": if_group_total_correctness,
+        "min-above-corr": functools.partial(
+            if_group_cost_min_change_correctness_cumulative_threshold, cor_thres=cor_threshold
+        ),
+        "min-above-cost": functools.partial(
+            if_group_cost_change_cumulative_threshold, cost_thres=cost_threshold
+        )
     }
     sorting_functions = {
         "generic-sorting": functools.partial(
@@ -566,6 +576,9 @@ def select_rules_subset_cumulative(
         ),
         "remove-below-thr": functools.partial(
             filter_by_correctness_cumulative, threshold=cor_threshold
+        ),
+        "remove-above-thr-cost": functools.partial(
+            filter_by_cost_cumulative, threshold=cost_threshold
         ),
         "remove-fair-rules": functools.partial(delete_fair_rules_cumulative, subgroup_costs=costs),
         "keep-only-min-change": functools.partial(
