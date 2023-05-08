@@ -400,4 +400,4 @@ def sort_triples_KStest(
         unfair_rules[ifclause] = thenclauses
         unfairness[ifclause] = lhs - rhs
     
-    return sorted(unfair_rules.items(), key=lambda ifthens: unfairness[ifthens[0]], reverse=True)
+    return sorted(unfair_rules.items(), key=lambda ifthens: unfairness[ifthens[0]], reverse=True), unfairness
