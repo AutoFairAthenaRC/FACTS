@@ -19,9 +19,33 @@ def filter_by_correctness(
         ret[ifclause] = filtered_thenclauses
     return ret
 
+def filter_contained_rules_simple(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]
+) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]:
+    ret = dict()
+    for ifclause, thenclauses in rulesbyif.items():
+        flag_keep = True
+        allthens = [then for _sg, (_cov, sg_thens) in thenclauses.items() for then, _cor in sg_thens]
+        for otherif, _ in rulesbyif.items():
+            if not ifclause.contains(otherif):
+                continue
+            extra_features = list(set(ifclause.features) - set(otherif.features))
+            if len(extra_features) == 0:
+                continue
+            if_and_allthens_relevant_values = [tuple(then.to_dict()[feat] for feat in extra_features) for then in allthens]
+            if_and_allthens_relevant_values.append(tuple(ifclause.to_dict()[feat] for feat in extra_features))
+            if Series(if_and_allthens_relevant_values).unique().size == 1:
+                flag_keep = False
+                break
+            
+        if flag_keep:
+            ret[ifclause] = thenclauses
+    
+    return ret
+
 # TODO: implementation is slightly incorrect. Should create partition of ifs where each if has a "subsumes" relationship with at least another.
 # essentially, if "subsumes" is a graph, it is transient, and we want weakly connected components
-def filter_contained_rules(
+def filter_contained_rules_keep_max_bias(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
     subgroup_costs: Dict[Predicate, Dict[str, float]]
 ) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]:
@@ -108,9 +132,33 @@ def filter_by_cost_cumulative(
         ret[ifclause] = filtered_thenclauses
     return ret
 
+def filter_contained_rules_simple_cumulative(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]
+) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]:
+    ret = dict()
+    for ifclause, thenclauses in rulesbyif.items():
+        flag_keep = True
+        allthens = [then for _sg, (_cov, sg_thens) in thenclauses.items() for then, _cor, _cost in sg_thens]
+        for otherif, _ in rulesbyif.items():
+            if not ifclause.contains(otherif):
+                continue
+            extra_features = list(set(ifclause.features) - set(otherif.features))
+            if len(extra_features) == 0:
+                continue
+            if_and_allthens_relevant_values = [tuple(then.to_dict()[feat] for feat in extra_features) for then in allthens]
+            if_and_allthens_relevant_values.append(tuple(ifclause.to_dict()[feat] for feat in extra_features))
+            if Series(if_and_allthens_relevant_values).unique().size == 1:
+                flag_keep = False
+                break
+        
+        if flag_keep:
+            ret[ifclause] = thenclauses
+    
+    return ret
+
 # TODO: implementation is slightly incorrect. Should create partition of ifs where each if has a "subsumes" relationship with at least another.
 # essentially, if "subsumes" is a graph, it is transient, and we want weakly connected components
-def filter_contained_rules_cumulative(
+def filter_contained_rules_keep_max_bias_cumulative(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
     subgroup_costs: Dict[Predicate, Dict[str, float]]
 ) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]:

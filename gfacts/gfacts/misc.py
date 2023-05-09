@@ -36,11 +36,13 @@ from .optimization import (
 )
 from .rule_filters import (
     filter_by_correctness,
-    filter_contained_rules,
+    filter_contained_rules_simple,
+    filter_contained_rules_keep_max_bias,
     delete_fair_rules,
     keep_only_minimum_change,
     filter_by_correctness_cumulative,
-    filter_contained_rules_cumulative,
+    filter_contained_rules_simple_cumulative,
+    filter_contained_rules_keep_max_bias_cumulative,
     filter_by_cost_cumulative,
     delete_fair_rules_cumulative,
     keep_only_minimum_change_cumulative
@@ -489,7 +491,7 @@ def select_rules_subset(
         ],
     ] = {
         "remove-contained": functools.partial(
-            filter_contained_rules, subgroup_costs=costs
+            filter_contained_rules_keep_max_bias, subgroup_costs=costs
         ),
         "remove-below-thr": functools.partial(
             filter_by_correctness, threshold=cor_threshold
@@ -581,7 +583,7 @@ def select_rules_subset_cumulative(
         ],
     ] = {
         "remove-contained": functools.partial(
-            filter_contained_rules_cumulative, subgroup_costs=costs
+            filter_contained_rules_keep_max_bias_cumulative, subgroup_costs=costs
         ),
         "remove-below-thr": functools.partial(
             filter_by_correctness_cumulative, threshold=cor_threshold
@@ -603,7 +605,8 @@ def select_rules_subset_KStest(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
     affected_population_sizes: Dict[str, int],
     confidence_level: float = 0.95,
-    top_count: int = 10
+    top_count: int = 10,
+    filter_contained: bool = False
 ) -> Tuple[
     Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
     Dict[Predicate, float]
@@ -613,6 +616,9 @@ def select_rules_subset_KStest(
 
     # step 2: keep only top k rules
     top_rules = dict(rules_sorted[:top_count])
+
+    if filter_contained:
+        top_rules = filter_contained_rules_simple_cumulative(top_rules)
 
     return top_rules, unfairness
 
