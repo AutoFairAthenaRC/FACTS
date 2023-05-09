@@ -604,14 +604,17 @@ def select_rules_subset_KStest(
     affected_population_sizes: Dict[str, int],
     confidence_level: float = 0.95,
     top_count: int = 10
-) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]:
+) -> Tuple[
+    Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+    Dict[Predicate, float]
+]:
     # step 1: sort according to metric
     rules_sorted, unfairness = sort_triples_KStest(rulesbyif, affected_population_sizes, confidence_level)
 
     # step 2: keep only top k rules
     top_rules = dict(rules_sorted[:top_count])
 
-    return top_rules,unfairness
+    return top_rules, unfairness
 
 def cum_corr_costs(
     ifclause: Predicate,

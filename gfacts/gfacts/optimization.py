@@ -371,7 +371,10 @@ def sort_triples_KStest(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
     affected_population_sizes: Dict[str, int],
     alpha: float = 0.95
-) -> List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]]:
+) -> Tuple[
+    List[Tuple[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]],
+    Dict[Predicate, float]
+]:
     def calculate_test(ifclause: Predicate, thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]):
         if len(thenclauses) != 2:
             raise NotImplementedError("Definitions only for two protected subgroups")

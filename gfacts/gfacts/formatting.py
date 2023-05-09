@@ -301,22 +301,15 @@ def print_recourse_report_KStest_cumulative(
     rules: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
     population_sizes: Optional[Dict[str, int]] = None,
     missing_subgroup_val: str = "N/A",
-    unfairness: Optional[Dict[Predicate, Dict[str, float]]] = None,
-    show_subgroup_costs: bool = False,
+    unfairness: Optional[Dict[Predicate, float]] = None,
     show_then_costs: bool = False,
     show_cumulative_plots: bool = False,
-    show_bias: Optional[str] = None,
     correctness_metric : bool = False
 ) -> None:
     if len(rules) == 0:
         print(f"{Style.BRIGHT}With the given parameters, no recourses showing unfairness have been found!{Style.RESET_ALL}")
     
     for ifclause, sg_thens in rules.items():
-        if unfairness is not None and show_bias is not None:
-            curr_subgroup_costs = unfairness[ifclause]
-            max_intergroup_cost_diff = max(curr_subgroup_costs.values()) 
-            
-        
         print(f"If {Style.BRIGHT}{ifclause}{Style.RESET_ALL}:")
         for subgroup, (cov, thens) in sg_thens.items():
             if subgroup == missing_subgroup_val:
