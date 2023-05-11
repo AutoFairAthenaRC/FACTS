@@ -303,8 +303,7 @@ def print_recourse_report_KStest_cumulative(
     missing_subgroup_val: str = "N/A",
     unfairness: Optional[Dict[Predicate, float]] = None,
     show_then_costs: bool = False,
-    show_cumulative_plots: bool = False,
-    correctness_metric : bool = False
+    show_cumulative_plots: bool = False
 ) -> None:
     if len(rules) == 0:
         print(f"{Style.BRIGHT}With the given parameters, no recourses showing unfairness have been found!{Style.RESET_ALL}")
