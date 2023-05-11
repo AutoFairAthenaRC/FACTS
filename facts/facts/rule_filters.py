@@ -118,6 +118,23 @@ def filter_by_correctness_cumulative(
         ret[ifclause] = filtered_thenclauses
     return ret
 
+def keep_cheapest_rules_above_cumulative_correctness_threshold(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+    threshold: float = 0.5
+) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]:
+    ret: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]= dict()
+    for ifclause, thenclauses in rulesbyif.items():
+        filtered_thenclauses: Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]] = dict()
+        for sg, (cov, sg_thens) in thenclauses.items():
+            filtered_thens: List[Tuple[Predicate, float, float]] = []
+            for then, cor, cost in sg_thens:
+                filtered_thens.append((then, cor, cost))
+                if cor > threshold:
+                    break
+            filtered_thenclauses[sg] = (cov, filtered_thens)
+        ret[ifclause] = filtered_thenclauses
+    return ret
+
 def filter_by_cost_cumulative(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
     threshold: float = 0.5
