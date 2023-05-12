@@ -45,7 +45,8 @@ from .rule_filters import (
     filter_contained_rules_keep_max_bias_cumulative,
     filter_by_cost_cumulative,
     delete_fair_rules_cumulative,
-    keep_only_minimum_change_cumulative
+    keep_only_minimum_change_cumulative,
+    keep_cheapest_rules_above_cumulative_correctness_threshold
 )
 
 # Re-exporting
@@ -590,6 +591,9 @@ def select_rules_subset_cumulative(
         ),
         "remove-above-thr-cost": functools.partial(
             filter_by_cost_cumulative, threshold=cost_threshold
+        ),
+        "keep-cheap-rules-above-thr-cor": functools.partial(
+            keep_cheapest_rules_above_cumulative_correctness_threshold, threshold=cor_threshold
         ),
         "remove-fair-rules": functools.partial(delete_fair_rules_cumulative, subgroup_costs=costs),
         "keep-only-min-change": functools.partial(
