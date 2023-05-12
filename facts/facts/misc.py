@@ -23,7 +23,8 @@ from .metrics import (
     calculate_all_if_subgroup_costs_cumulative,
     if_group_cost_min_change_correctness_cumulative_threshold,
     if_group_cost_change_cumulative_threshold,
-    if_group_average_recourse_cost
+    if_group_average_recourse_cost_cinf,
+    if_group_average_recourse_cost_conditional
 )
 from .optimization import (
     optimize_vanilla,
@@ -515,6 +516,7 @@ def select_rules_subset_cumulative(
     filter_sequence: List[str] = [],
     cor_threshold: float = 0.5,
     cost_threshold: float = 0.5,
+    c_inf: float = 2,
     secondary_sorting_objectives: List[str] = [],
     params: ParameterProxy = ParameterProxy(),
 ) -> Tuple[
@@ -532,13 +534,15 @@ def select_rules_subset_cumulative(
         "min-above-cost": functools.partial(
             if_group_cost_change_cumulative_threshold, cost_thres=cost_threshold
         ),
-        "fairness-of-mean-recourse": functools.partial(
-            if_group_average_recourse_cost,
+        "fairness-of-mean-recourse-cinf": functools.partial(
+            if_group_average_recourse_cost_cinf,
             correctness_caps={
                 ifc: max(corr for _sg, (_cov, thens) in thencs.items() for _then, corr, _cost in thens)
-                for ifc, thencs in rulesbyif.items() 
-            }
-        )
+                for ifc, thencs in rulesbyif.items()
+            },
+            c_infty_coeff=c_inf
+        ),
+        "fairness-of-mean-recourse-conditional": if_group_average_recourse_cost_conditional
     }
     sorting_functions = {
         "generic-sorting": functools.partial(
