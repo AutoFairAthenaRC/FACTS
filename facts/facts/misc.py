@@ -531,7 +531,7 @@ def select_rules_subset_cumulative(
         "min-above-corr": functools.partial(
             if_group_cost_min_change_correctness_cumulative_threshold, cor_thres=cor_threshold
         ),
-        "min-above-cost": functools.partial(
+        "max-upto-cost": functools.partial(
             if_group_cost_change_cumulative_threshold, cost_thres=cost_threshold
         ),
         "fairness-of-mean-recourse-cinf": functools.partial(
@@ -688,8 +688,8 @@ def cum_corr_costs_all(
     return ret
 
 def update_costs_cumulative(
-        rules: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
-        params: ParameterProxy = ParameterProxy()
+    rules: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+    params: ParameterProxy = ParameterProxy()
 ) -> None:
     for ifc, allthens in rules.items():
         for sg, (cov, sg_thens) in allthens.items():
