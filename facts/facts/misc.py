@@ -612,7 +612,6 @@ def select_rules_subset_cumulative(
 def select_rules_subset_KStest(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
     affected_population_sizes: Dict[str, int],
-    confidence_level: float = 0.95,
     top_count: int = 10,
     filter_contained: bool = False
 ) -> Tuple[
@@ -620,7 +619,7 @@ def select_rules_subset_KStest(
     Dict[Predicate, float]
 ]:
     # step 1: sort according to metric
-    rules_sorted, unfairness = sort_triples_KStest(rulesbyif, affected_population_sizes, confidence_level)
+    rules_sorted, unfairness = sort_triples_KStest(rulesbyif, affected_population_sizes)
 
     # step 2: keep only top k rules
     top_rules = dict(rules_sorted[:top_count])
