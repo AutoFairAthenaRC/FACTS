@@ -688,6 +688,15 @@ def cum_corr_costs_all(
         ret[ifclause] = all_thens_new
     return ret
 
+def update_costs_cumulative(
+        rules: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+        params: ParameterProxy = ParameterProxy()
+) -> None:
+    for ifc, allthens in rules.items():
+        for sg, (cov, sg_thens) in allthens.items():
+            for i, (then, corr, cost) in enumerate(sg_thens):
+                sg_thens[i] = (then, corr, featureChangePred(ifc, then, params))
+
 def cum_corr_costs_all_minimal(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
     X: DataFrame,
