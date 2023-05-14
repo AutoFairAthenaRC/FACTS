@@ -103,7 +103,7 @@ def keep_only_minimum_change(
 
 
 
-# same for metrics definitions of Dimitris Sacharidis
+# same for metrics definitions of the "micro" viewpoint
 def filter_by_correctness_cumulative(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
     threshold: float = 0.5

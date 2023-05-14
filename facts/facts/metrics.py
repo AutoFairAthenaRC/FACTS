@@ -239,7 +239,7 @@ def calculate_all_if_subgroup_costs(
         ret[ifclause] = calculate_if_subgroup_costs(ifclause, thenclauses, **kwargs)
     return ret
 
-##### The same, but for the metrics definitions of Dimitris Sacharidis
+##### The same, but for the metrics definitions of the "micro" viewpoint
 if_group_cost_f_t_cumulative = Callable[[Predicate, List[Tuple[Predicate, float, float]]], float]
 
 def calculate_if_subgroup_costs_cumulative(
