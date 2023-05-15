@@ -1,6 +1,7 @@
 from typing import List, Dict, Tuple
 from functools import partial
 
+import numpy as np
 import pandas as pd
 from pandas import DataFrame
 
@@ -31,8 +32,25 @@ METRICS = {
     "micro-mean-rec-cost-normalize-discrepancy"
 }
 
+def auto_budget_calculation(
+    rules_with_cumulative: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+    cor_thres: float,
+    percentiles: List[float],
+    ignore_inf: bool = True
+) -> List[float]:
+    all_minchanges_to_thres = []
+    for ifc, all_thens in rules_with_cumulative.items():
+        for sg, (cov, thens) in all_thens.items():
+            all_minchanges_to_thres.append(if_group_cost_min_change_correctness_cumulative_threshold(ifc, thens, cor_thres))
+    
+    vals = np.array(all_minchanges_to_thres)
+    if ignore_inf:
+        vals = vals[vals != np.inf]
+    return np.quantile(vals, percentiles).tolist()
+
 def make_table(
     rules_with_both_corrs: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+    sensitive_attribute_vals: List[str],
     effectiveness_thresholds: List[float],
     cost_budgets: List[float],
     c_infty_coeff: float = 2.,
@@ -49,13 +67,13 @@ def make_table(
             for sg, (cov, thens) in all_thens.items()
         }
 
-        weighted_averages = calculate_if_subgroup_costs(ifclause, thens_with_atomic, if_group_cost_mean_with_correctness)
+        weighted_averages = calculate_if_subgroup_costs(ifclause, thens_with_atomic, partial(if_group_cost_mean_with_correctness, params=params))
         mincostabovethreshold = tuple(
-            calculate_if_subgroup_costs(ifclause, thens_with_atomic, partial(if_group_cost_min_change_correctness_threshold, cor_thres=th))
+            calculate_if_subgroup_costs(ifclause, thens_with_atomic, partial(if_group_cost_min_change_correctness_threshold, cor_thres=th, params=params))
             for th in effectiveness_thresholds
         )
         numberabovethreshold = tuple(
-            calculate_if_subgroup_costs(ifclause, thens_with_atomic, partial(if_group_cost_recoursescount_correctness_threshold, cor_thres=th))
+            calculate_if_subgroup_costs(ifclause, thens_with_atomic, partial(if_group_cost_recoursescount_correctness_threshold, cor_thres=th, params=params))
             for th in effectiveness_thresholds
         )
 
@@ -81,23 +99,23 @@ def make_table(
             if_group_average_recourse_cost_conditional
         )
 
-        rows.append(
-            (ifclause, weighted_averages) + 
-            mincostabovethreshold + 
-            numberabovethreshold + 
-            (total_effs,) + 
-            max_effs_within_budget +
-            costs_of_effectiveness +
+        row = (weighted_averages,) + \
+            mincostabovethreshold + \
+            numberabovethreshold + \
+            (total_effs,) + \
+            max_effs_within_budget + \
+            costs_of_effectiveness + \
             (mean_recourse_costs_cinf, mean_recourse_costs_conditional)
-        )
+        rows.append((ifclause,) + tuple(v for d in row for v in d.values()))
     
-    return pd.DataFrame(
-        rows,
-        columns=["subgroup", "weighted-average"] 
-        + [("mincost-above-th", th) for th in effectiveness_thresholds]
-        + [("number-above-th", th) for th in effectiveness_thresholds]
-        + ["total-effectiveness"]
-        + [("eff-within-budget", th) for th in cost_budgets]
-        + [("cost-of-effectiveness", th) for th in effectiveness_thresholds]
+    cols = ["weighted-average"] \
+        + [("mincost-above-th", th) for th in effectiveness_thresholds] \
+        + [("number-above-th", th) for th in effectiveness_thresholds] \
+        + ["total-effectiveness"] \
+        + [("eff-within-budget", th) for th in cost_budgets] \
+        + [("cost-of-effectiveness", th) for th in effectiveness_thresholds] \
         + ["mean-cost-cinf", "mean-cost-conditional"]
-    )
+    cols = pd.MultiIndex.from_product([cols, sensitive_attribute_vals])
+    cols = pd.MultiIndex.from_tuples([("subgroup", "subgroup")] + list(cols))
+
+    return pd.DataFrame(rows, columns=cols)
