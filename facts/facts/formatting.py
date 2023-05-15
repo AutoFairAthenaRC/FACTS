@@ -192,7 +192,7 @@ def print_recourse_report(
                 # abs() used to get rid of -0.0
                 assert correctness >= -ASSUME_ZERO
                 cor_str = Fore.GREEN + f"{abs(correctness):.2%}" + Fore.RESET
-                print(f"\t\tMake {Style.BRIGHT}{thenstr}{Style.RESET_ALL} with correctness {cor_str}.")
+                print(f"\t\tMake {Style.BRIGHT}{thenstr}{Style.RESET_ALL} with effectiveness {cor_str}.")
 
             if subgroup_costs is not None and show_subgroup_costs:
                 cost_of_current_subgroup = subgroup_costs[ifclause][subgroup]
@@ -211,7 +211,7 @@ def print_recourse_report(
                 print(f"\t{Fore.MAGENTA}No bias!{Fore.RESET}")
 
         if aggregate_cors_costs is not None and ifclause in aggregate_cors_costs:
-            print(f"\t{Fore.CYAN}Cumulative correctness plot for the above recourses:{Fore.RESET}")
+            print(f"\t{Fore.CYAN}Cumulative effectiveness plot for the above recourses:{Fore.RESET}")
             cost_cors = {}
             for sg, thens in aggregate_cors_costs[ifclause].items():
                 cost_cors[sg] = ([cost for _, cost in thens], [cor for cor, _ in thens])
@@ -263,7 +263,7 @@ def print_recourse_report_cumulative(
                 # abs() used to get rid of -0.0
                 assert correctness >= -ASSUME_ZERO
                 cor_str = Fore.GREEN + f"{abs(correctness):.2%}" + Fore.RESET
-                print(f"\t\tMake {Style.BRIGHT}{thenstr}{Style.RESET_ALL} with correctness {cor_str}", end="")
+                print(f"\t\tMake {Style.BRIGHT}{thenstr}{Style.RESET_ALL} with effectiveness {cor_str}", end="")
 
                 if show_then_costs:
                     print(f" and counterfactual cost = {round(cost,2)}", end="")
@@ -290,7 +290,7 @@ def print_recourse_report_cumulative(
                 print(f"\t{Fore.MAGENTA}No bias!{Fore.RESET}")
 
         if show_cumulative_plots:
-            print(f"\t{Fore.CYAN}Cumulative correctness plot for the above recourses:{Fore.RESET}")
+            print(f"\t{Fore.CYAN}Cumulative effectiveness plot for the above recourses:{Fore.RESET}")
             cost_cors = {}
             for sg, (_cov, thens) in rules[ifclause].items():
                 cost_cors[sg] = ([cost for _, _, cost in thens], [cor for _, cor, _ in thens])
@@ -332,7 +332,7 @@ def print_recourse_report_KStest_cumulative(
                 # abs() used to get rid of -0.0
                 assert correctness >= -ASSUME_ZERO
                 cor_str = Fore.GREEN + f"{abs(correctness):.2%}" + Fore.RESET
-                print(f"\t\tMake {Style.BRIGHT}{thenstr}{Style.RESET_ALL} with correctness {cor_str}", end="")
+                print(f"\t\tMake {Style.BRIGHT}{thenstr}{Style.RESET_ALL} with effectiveness {cor_str}", end="")
 
                 if show_then_costs:
                     print(f" and counterfactual cost = {round(cost,2)}", end="")
@@ -345,7 +345,7 @@ def print_recourse_report_KStest_cumulative(
     
 
         if show_cumulative_plots:
-            print(f"\t{Fore.CYAN}Cumulative correctness plot for the above recourses:{Fore.RESET}")
+            print(f"\t{Fore.CYAN}Cumulative effectiveness plot for the above recourses:{Fore.RESET}")
             cost_cors = {}
             for sg, (_cov, thens) in rules[ifclause].items():
                 cost_cors[sg] = ([cost for _, _, cost in thens], [cor for _, cor, _ in thens])
