@@ -20,18 +20,6 @@ from .metrics import (
     calculate_if_subgroup_costs_cumulative
 )
 
-METRICS = {
-    "macro-weighted-average",
-    "macro-mincost-above-corr-thres",
-    "macro-number-above-corr-thres",
-    "micro-eqeff",
-    "micro-eqeff-within-budget",
-    "micro-eq-cost-eff",
-    "micro-KS-test",
-    "micro-mean-rec-cost-penalize-discrepancy",
-    "micro-mean-rec-cost-normalize-discrepancy"
-}
-
 def auto_budget_calculation(
     rules_with_cumulative: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
     cor_thres: float,
@@ -99,6 +87,17 @@ def make_table(
             if_group_average_recourse_cost_conditional
         )
 
+        ecds = pd.DataFrame({
+            sg: np.array([cor for _t, cor, _cost in thens])
+            for sg, (cov, thens) in thens_with_cumulative_and_costs.items()
+        })
+        ecds_max = ecds.max(axis=1)
+        ecds_min = ecds.min(axis=1)
+        eff_cost_tradeoff_KS = (ecds_max - ecds_min).max()
+        eff_cost_tradeoff_KS_idx = (ecds_max - ecds_min).argmax()
+        unfair_row = ecds.iloc[eff_cost_tradeoff_KS_idx]
+        eff_cost_tradeoff_biased = unfair_row.index[unfair_row.argmin()]
+
         row = (weighted_averages,) + \
             mincostabovethreshold + \
             numberabovethreshold + \
@@ -106,7 +105,7 @@ def make_table(
             max_effs_within_budget + \
             costs_of_effectiveness + \
             (mean_recourse_costs_cinf, mean_recourse_costs_conditional)
-        rows.append((ifclause,) + tuple(v for d in row for v in d.values()))
+        rows.append((ifclause,) + tuple(v for d in row for v in d.values()) + (eff_cost_tradeoff_KS, eff_cost_tradeoff_biased))
     
     cols = ["weighted-average"] \
         + [("mincost-above-th", th) for th in effectiveness_thresholds] \
@@ -116,6 +115,24 @@ def make_table(
         + [("cost-of-effectiveness", th) for th in effectiveness_thresholds] \
         + ["mean-cost-cinf", "mean-cost-conditional"]
     cols = pd.MultiIndex.from_product([cols, sensitive_attribute_vals])
-    cols = pd.MultiIndex.from_tuples([("subgroup", "subgroup")] + list(cols))
+    cols = pd.MultiIndex.from_tuples([("subgroup", "subgroup")] + list(cols) + [("KStest", "value"), ("KStest", "bias")])
 
     return pd.DataFrame(rows, columns=cols)
+
+def get_diff_table(
+        df,
+        sensitive_attribute_vals=["Male", "Female"]    
+    ):
+    z = df.copy()
+    z = z.drop(columns=[('subgroup','subgroup')])
+    diff = pd.DataFrame()
+
+    for col in z.columns.get_level_values(0):
+        diff[col] = abs(z[col,sensitive_attribute_vals[0]] - z[col,sensitive_attribute_vals[1]])
+
+    diff['subgroup'] = df['subgroup','subgroup']
+    first = diff.pop('subgroup')
+    diff.insert(0,'subgroup',first)
+    diff = diff.fillna(0)
+
+    return diff
