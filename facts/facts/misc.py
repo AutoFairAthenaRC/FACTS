@@ -716,6 +716,7 @@ def feature_change_builder(
     X: DataFrame,
     num_cols: List[str],
     cate_cols: List[str],
+    ord_cols: List[str],
     feature_weights: Dict[str, int],
     num_normalization: bool = False,
     feats_to_normalize: Optional[List[str]] = None,
@@ -725,7 +726,11 @@ def feature_change_builder(
 
     def feature_change_num(v1, v2, weight):
         return abs(v1 - v2) * weight
+    
+    def feature_change_ord(v1, v2, weight, t):
+        return abs(t[v1] - t[v2]) * weight
 
+    ### normalization of numeric features
     max_vals = X.max(axis=0)
     min_vals = X.min(axis=0)
     weight_multipliers = {}
@@ -752,4 +757,12 @@ def feature_change_builder(
         )
         for col in num_cols
     }
-    return {**ret_cate, **ret_num}
+    ret_ord = {
+        col: functools.partial(
+            feature_change_ord,
+            weight=feature_weights.get(col, 1),
+            t={name: code for code, name in enumerate(X[col].cat.categories)}
+        )
+        for col in ord_cols
+    }
+    return {**ret_cate, **ret_num, **ret_ord}
