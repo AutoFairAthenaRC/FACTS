@@ -143,7 +143,7 @@ def recourse_report_reverse(
             max_intergroup_cost_diff = max(curr_subgroup_costs.values()) - min(curr_subgroup_costs.values())
             biased_subgroup, max_cost = max(curr_subgroup_costs.items(), key=lambda p: p[1])
             if max_intergroup_cost_diff > 0:
-                ret.append(f"\t{Fore.MAGENTA}Bias against {biased_subgroup}. Unfairness measure = {round(max_intergroup_cost_diff,2)}.{Fore.RESET}\n")
+                ret.append(f"\t{Fore.MAGENTA}Bias against {biased_subgroup}. Unfairness score = {round(max_intergroup_cost_diff,2)}.{Fore.RESET}\n")
             else:
                 ret.append("\tNo bias!\n")
 
@@ -206,7 +206,7 @@ def print_recourse_report(
             max_intergroup_cost_diff = max(curr_subgroup_costs.values()) - min(curr_subgroup_costs.values())
             biased_subgroup, max_cost = max(curr_subgroup_costs.items(), key=lambda p: p[1])
             if max_intergroup_cost_diff > 0:
-                print(f"\t{Fore.MAGENTA}Bias against {biased_subgroup}. Unfairness measure = {round(max_intergroup_cost_diff,2)}.{Fore.RESET}")
+                print(f"\t{Fore.MAGENTA}Bias against {biased_subgroup}. Unfairness score = {round(max_intergroup_cost_diff,2)}.{Fore.RESET}")
             else:
                 print(f"\t{Fore.MAGENTA}No bias!{Fore.RESET}")
 
@@ -285,7 +285,7 @@ def print_recourse_report_cumulative(
                 max_intergroup_cost_diff = max(curr_subgroup_costs.values()) - min(curr_subgroup_costs.values())
                 biased_subgroup, max_cost = min(curr_subgroup_costs.items(), key=lambda p: p[1])
             if max_intergroup_cost_diff > 0:
-                print(f"\t{Fore.MAGENTA}Bias against {biased_subgroup}. Unfairness measure = {round(max_intergroup_cost_diff,3)}.{Fore.RESET}")
+                print(f"\t{Fore.MAGENTA}Bias against {biased_subgroup}. Unfairness score = {round(max_intergroup_cost_diff,3)}.{Fore.RESET}")
             else:
                 print(f"\t{Fore.MAGENTA}No bias!{Fore.RESET}")
 
