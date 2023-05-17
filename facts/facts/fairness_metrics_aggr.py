@@ -136,3 +136,26 @@ def get_diff_table(
     diff = diff.fillna(0)
 
     return diff
+
+def filter_on_fair_unfair(
+    ranked: DataFrame,
+    fair_lower_bound: int,
+    unfair_lower_bound: int,
+    fair_token: str,
+    rank_upper: int
+) -> DataFrame:
+    def elem_to_bool(x):
+        if x == fair_token:
+            return False
+        if x < rank_upper:
+            return True
+        elif x >= rank_upper:
+            return False
+        else:
+            raise NotImplementedError("This should be unreachable.", x)
+    fair_unfair_indicator = ranked\
+        .applymap(elem_to_bool)\
+        .apply(lambda row: row.sum() >= unfair_lower_bound and (~ row).sum() >= fair_lower_bound, axis=1)
+    fair_unfair = ranked[fair_unfair_indicator]
+
+    return fair_unfair
