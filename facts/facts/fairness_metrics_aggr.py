@@ -108,14 +108,14 @@ def make_table(
         rows.append((ifclause,) + tuple(v for d in row for v in d.values()) + (eff_cost_tradeoff_KS, eff_cost_tradeoff_biased))
     
     cols = ["weighted-average"] \
-        + [("mincost-above-th", th) for th in effectiveness_thresholds] \
-        + [("number-above-th", th) for th in effectiveness_thresholds] \
-        + ["total-effectiveness"] \
-        + [("eff-within-budget", th) for th in cost_budgets] \
-        + [("cost-of-effectiveness", th) for th in effectiveness_thresholds] \
-        + ["mean-cost-cinf", "mean-cost-conditional"]
+        + [("Equal Cost of Effectiveness(Macro)", th) for th in effectiveness_thresholds] \
+        + [("Equal Choice for Recourse", th) for th in effectiveness_thresholds] \
+        + ["Equal Effectiveness"] \
+        + [("Equal Effectiveness within Budget", th) for th in cost_budgets] \
+        + [("Equal Cost of Effectiveness(Micro)", th) for th in effectiveness_thresholds] \
+        + ["mean-cost-cinf", "Equal(Conditional Mean Recourse)"]
     cols = pd.MultiIndex.from_product([cols, sensitive_attribute_vals])
-    cols = pd.MultiIndex.from_tuples([("subgroup", "subgroup")] + list(cols) + [("KStest", "value"), ("KStest", "bias")])
+    cols = pd.MultiIndex.from_tuples([("subgroup", "subgroup")] + list(cols) + [("Fair Effectiveness-Cost Trade-Off", "value"), ("Fair Effectiveness-Cost Trade-Off", "bias")])
 
     return pd.DataFrame(rows, columns=cols)
 
