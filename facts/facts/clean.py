@@ -25,6 +25,7 @@ def clean_dataset(X : DataFrame, dataset : str) -> DataFrame:
     elif dataset == 'compas':
         X = X.reset_index(drop=True)
         X = X.drop(columns=['age','c_charge_desc'])
+        X['priors_count'] = pd.cut(X['priors_count'],[-0.1,1,5,10,15,38])
         X.target.replace('Recidivated',0,inplace=True)
         X.target.replace('Survived',1,inplace=True)
 
