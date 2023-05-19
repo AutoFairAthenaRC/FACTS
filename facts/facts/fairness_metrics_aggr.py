@@ -41,7 +41,7 @@ def auto_budget_calculation(
     vals = np.array(all_minchanges_to_thres)
     if ignore_inf:
         vals = vals[vals != np.inf]
-    return np.quantile(vals, percentiles).tolist()
+    return np.unique(np.quantile(vals, percentiles)).tolist()
 
 
 def make_table(
@@ -55,6 +55,7 @@ def make_table(
     params: ParameterProxy = ParameterProxy(),
 ) -> DataFrame:
     rows = []
+    flag_first = True
     for ifclause, all_thens in rules_with_both_corrs.items():
         thens_with_atomic = {
             sg: (cov, [(then, atomic_cor) for then, atomic_cor, _cum_cor in thens])
@@ -170,7 +171,7 @@ def make_table(
         )
         rows.append(
             (ifclause,)
-            + tuple(v for d in row for v in d.values())
+            + tuple([d[sens] for d in row for sens in sensitive_attribute_vals])
             + (eff_cost_tradeoff_KS, eff_cost_tradeoff_biased)
         )
 
