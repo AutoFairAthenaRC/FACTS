@@ -14,8 +14,19 @@ def clean_dataset(X : DataFrame, dataset : str) -> DataFrame:
         X['income'] = np.where((X['income'] == ' <=50K') , 0, 1)
     elif dataset == 'SSL':
         X['SSL SCORE'] = np.where((X['SSL SCORE'] >= 345) , 0, 1)
+        X = X.replace('WBH','BLK')
+        X = X.replace('WWH','WHI')
+        X = X.replace('U',np.nan)
+        X = X.replace('X',np.nan)
+        X = X.dropna()
+        X = X[(X['RACE CODE CD'] != 'I') & (X['RACE CODE CD'] != 'API')]
+        X['PREDICTOR RAT TREND IN CRIMINAL ACTIVITY'] = pd.qcut(X['PREDICTOR RAT TREND IN CRIMINAL ACTIVITY'],q=6)
         X['PREDICTOR RAT AGE AT LATEST ARREST'] = X['PREDICTOR RAT AGE AT LATEST ARREST'].replace('less than 20', '10-20')
-
+    elif dataset == 'compas':
+        X = X.reset_index(drop=True)
+        X = X.drop(columns=['age','c_charge_desc'])
+        X.target.replace('Recidivated',0,inplace=True)
+        X.target.replace('Survived',1,inplace=True)
 
     return X
 

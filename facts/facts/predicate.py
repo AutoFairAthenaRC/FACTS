@@ -137,6 +137,9 @@ def recIsValid(p1: Predicate, p2: Predicate,X: DataFrame ,drop_infeasible: bool)
                 elif feat == 'PREDICTOR RAT AGE AT LATEST ARREST':
                     age_change = p1.values[count] <= p2.values[count]
                     feat_change = feat_change and age_change
+                elif feat == 'sex':
+                    race_change = p1.values[count] == p2.values[count]
+                    feat_change = feat_change and race_change
             return feat_change
         else: return False
     else:
