@@ -317,12 +317,14 @@ def get_analysis_df(comb_df):
                         current_value = metric_rank_one[metric]
                     metric_rank_one[metric] = current_value + 1
             elif type_ == "bias against":
-                if value == "Male":
+                value_ = value.replace(" ", "")
+
+                if value_ == "Male":
                     current_value = 0
                     if metric in metric_male_cnt:
                         current_value = metric_male_cnt[metric]
                     metric_male_cnt[metric] = current_value + 1
-                elif value == "Female":
+                elif value_ == "Female":
                     current_value = 0
                     if metric in metric_female_cnt:
                         current_value = metric_female_cnt[metric]
