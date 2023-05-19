@@ -236,8 +236,9 @@ def get_comb_df(
     ranked,
     diff,
     rev_bias_metrics=["Equal Effectiveness", "Equal Effectiveness within Budget"],
+    sensitive_attribute_vals=["Male", "Female"],
 ):
-    diff_real_val = get_diff_table(df, with_abs=False)
+    diff_real_val = get_diff_table(df, sensitive_attribute_vals, with_abs=False)
     diff_real_val = diff_real_val.set_index("subgroup")
     diff_drop = diff.drop(columns=[("Fair Effectiveness-Cost Trade-Off", "bias")])
     first_lvl_subgroups = ranked.index.unique()
@@ -266,11 +267,19 @@ def get_comb_df(
                 val = c
                 id_tmp = (id[0], "value")
             else:
-                val = "Male" if c > 0 else "Female"
+                val = (
+                    sensitive_attribute_vals[0]
+                    if c > 0
+                    else sensitive_attribute_vals[1]
+                )
                 if c == 0:
                     val = "Fair"
                 elif id[0] in rev_bias_metrics:
-                    val = "Male" if val == "Female" else "Female"
+                    val = (
+                        sensitive_attribute_vals[0]
+                        if val == sensitive_attribute_vals[1]
+                        else sensitive_attribute_vals[1]
+                    )
             map_bias[(i, id_tmp)] = val
 
     comb_columns = pd.MultiIndex.from_product(
@@ -301,7 +310,7 @@ def get_comb_df(
     return comb_df
 
 
-def get_analysis_df(comb_df):
+def get_analysis_df(comb_df, sensitive_attribute_vals=["Male", "Female"]):
     metric_rank_one = {}
     metric_male_cnt = {}
     metric_female_cnt = {}
@@ -318,12 +327,14 @@ def get_analysis_df(comb_df):
                         current_value = metric_rank_one[metric]
                     metric_rank_one[metric] = current_value + 1
             elif type_ == "bias against":
-                if value == "Male":
+                value_ = value.replace(" ", "")
+
+                if value_ == sensitive_attribute_vals[0]:
                     current_value = 0
                     if metric in metric_male_cnt:
                         current_value = metric_male_cnt[metric]
                     metric_male_cnt[metric] = current_value + 1
-                elif value == "Female":
+                elif value_ == sensitive_attribute_vals[1]:
                     current_value = 0
                     if metric in metric_female_cnt:
                         current_value = metric_female_cnt[metric]
@@ -336,10 +347,14 @@ def get_analysis_df(comb_df):
                 "Rank = 1 Count": metric_rank_one[metric]
                 if metric in metric_rank_one
                 else 0,
-                "Male bias against Count": metric_male_cnt[metric]
+                f"{sensitive_attribute_vals[0]} bias against Count": metric_male_cnt[
+                    metric
+                ]
                 if metric in metric_male_cnt
                 else 0,
-                "Female bias against Count": metric_female_cnt[metric]
+                f"{sensitive_attribute_vals[1]} bias against Count": metric_female_cnt[
+                    metric
+                ]
                 if metric in metric_female_cnt
                 else 0,
             }
