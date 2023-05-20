@@ -55,7 +55,6 @@ def make_table(
     params: ParameterProxy = ParameterProxy(),
 ) -> DataFrame:
     rows = []
-    flag_first = True
     for ifclause, all_thens in rules_with_both_corrs.items():
         thens_with_atomic = {
             sg: (cov, [(then, atomic_cor) for then, atomic_cor, _cum_cor in thens])
@@ -203,7 +202,11 @@ def make_table(
     return pd.DataFrame(rows, columns=cols)
 
 
-def get_diff_table(df, sensitive_attribute_vals=["Male", "Female"], with_abs=True):
+def get_diff_table(
+    df: DataFrame,
+    sensitive_attribute_vals: List[str] = ["Male", "Female"],
+    with_abs: bool = True
+) -> DataFrame:
     z = df.copy()
     z = z.drop(columns=[("subgroup", "subgroup")])
     diff = pd.DataFrame()
@@ -232,11 +235,11 @@ def get_diff_table(df, sensitive_attribute_vals=["Male", "Female"], with_abs=Tru
 
 
 def get_comb_df(
-    df,
-    ranked,
-    diff,
-    rev_bias_metrics=["Equal Effectiveness", "Equal Effectiveness within Budget"],
-    sensitive_attribute_vals=["Male", "Female"],
+    df: DataFrame,
+    ranked: DataFrame,
+    diff: DataFrame,
+    rev_bias_metrics: List[str] = ["Equal Effectiveness", "Equal Effectiveness within Budget"],
+    sensitive_attribute_vals: List[str] = ["Male", "Female"],
 ):
     diff_real_val = get_diff_table(df, sensitive_attribute_vals, with_abs=False)
     diff_real_val = diff_real_val.set_index("subgroup")
@@ -249,23 +252,23 @@ def get_comb_df(
     map_bias = {}
 
     for i, row in ranked.iterrows():
-        for id, c in row.items():
-            map_ranks[(i, id)] = c
+        for metric, c in row.items():
+            map_ranks[(i, metric)] = c
 
     for i, row in diff_drop.iterrows():
-        for id, c in row.items():
-            map_scores[(i, id)] = c
+        for metric, c in row.items():
+            map_scores[(i, metric)] = c
 
     for i, row in diff_real_val.iterrows():
-        for id, c in row.items():
-            id_tmp = id
+        for metric, c in row.items():
+            id_tmp = metric
             val = None
-            if id[1] == "value":
-                map_scores[(i, id)] = c
+            if metric[1] == "value":
+                map_scores[(i, metric)] = c
                 continue
-            if id[1] == "bias":
+            if metric[1] == "bias":
                 val = c
-                id_tmp = (id[0], "value")
+                id_tmp = (metric[0], "value")
             else:
                 val = (
                     sensitive_attribute_vals[0]
@@ -274,7 +277,7 @@ def get_comb_df(
                 )
                 if c == 0:
                     val = "Fair"
-                elif id[0] in rev_bias_metrics:
+                elif metric[0] in rev_bias_metrics:
                     val = (
                         sensitive_attribute_vals[0]
                         if val == sensitive_attribute_vals[1]
