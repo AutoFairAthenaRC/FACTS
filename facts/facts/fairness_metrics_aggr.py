@@ -205,7 +205,7 @@ def make_table(
 def get_diff_table(
     df: DataFrame,
     sensitive_attribute_vals: List[str] = ["Male", "Female"],
-    with_abs: bool = True
+    with_abs: bool = True,
 ) -> DataFrame:
     z = df.copy()
     z = z.drop(columns=[("subgroup", "subgroup")])
@@ -238,7 +238,10 @@ def get_comb_df(
     df: DataFrame,
     ranked: DataFrame,
     diff: DataFrame,
-    rev_bias_metrics: List[str] = ["Equal Effectiveness", "Equal Effectiveness within Budget"],
+    rev_bias_metrics: List[str] = [
+        "Equal Effectiveness",
+        "Equal Effectiveness within Budget",
+    ],
     sensitive_attribute_vals: List[str] = ["Male", "Female"],
 ):
     diff_real_val = get_diff_table(df, sensitive_attribute_vals, with_abs=False)
@@ -313,10 +316,29 @@ def get_comb_df(
     return comb_df
 
 
-def get_analysis_df(comb_df, sensitive_attribute_vals=["Male", "Female"]):
+def get_analysis_dfs(comb_df, ranked, sensitive_attribute_vals):
     metric_rank_one = {}
     metric_male_cnt = {}
     metric_female_cnt = {}
+    other_ranks = {}
+    map_ranks = {}
+    metric_max_value = {}
+
+    for i, row in ranked.iterrows():
+        for id, c in row.items():
+            map_ranks[(i, id)] = c
+
+            max_val = 0
+            if id in metric_max_value:
+                max_val = metric_max_value[id]
+            if c != "Fair" and max_val < c:
+                max_val = c
+            metric_max_value[id] = max_val
+
+    all_metrics = []
+    for metric_type in comb_df.columns:
+        all_metrics.append(metric_type[0])
+    all_metrics = list(set(all_metrics))
 
     for sg, row in comb_df.iterrows():
         for metric_and_type, value in row.items():
@@ -329,6 +351,29 @@ def get_analysis_df(comb_df, sensitive_attribute_vals=["Male", "Female"]):
                     if metric in metric_rank_one:
                         current_value = metric_rank_one[metric]
                     metric_rank_one[metric] = current_value + 1
+
+                    for other_metric in all_metrics:
+                        cur_metric = other_metric
+
+                        if cur_metric == "Fair Effectiveness-Cost Trade-Off":
+                            cur_metric = ("Fair Effectiveness-Cost Trade-Off", "value")
+
+                        metric_ = metric
+
+                        if metric == "Fair Effectiveness-Cost Trade-Off":
+                            metric_ = ("Fair Effectiveness-Cost Trade-Off", "value")
+
+                        current_value = 0
+                        if (metric_, cur_metric) in other_ranks:
+                            current_value = other_ranks[(metric_, cur_metric)]
+
+                        sg_val = 0
+                        if (sg, cur_metric) in map_ranks:
+                            if map_ranks[((sg, cur_metric))] != "Fair":
+                                sg_val = map_ranks[(sg, cur_metric)]
+                            else:
+                                sg_val = metric_max_value[cur_metric] + 1
+                        other_ranks[(metric_, cur_metric)] = current_value + sg_val
             elif type_ == "bias against":
                 value_ = value.replace(" ", "")
 
@@ -370,7 +415,29 @@ def get_analysis_df(comb_df, sensitive_attribute_vals=["Male", "Female"]):
     total_row.index = ["Total Count"]
     data_df = data_df.append(total_row)
 
-    return data_df
+    rank_analysis_list = []
+    for metric1 in all_metrics:
+        metric1_ = metric1
+        if metric1 == "Fair Effectiveness-Cost Trade-Off":
+            metric1_ = ("Fair Effectiveness-Cost Trade-Off", "value")
+
+        row = []
+        for metric2 in all_metrics:
+            metric2_ = metric2
+            if metric2 == "Fair Effectiveness-Cost Trade-Off":
+                metric2_ = ("Fair Effectiveness-Cost Trade-Off", "value")
+            pair = (metric1_, metric2_)
+            if pair in other_ranks:
+                value = np.round(other_ranks[pair] / metric_rank_one[metric1], 1)
+                row.append(value)
+            else:
+                row.append(None)
+        rank_analysis_list.append(row)
+    rank_analysis_df = pd.DataFrame(
+        rank_analysis_list, index=all_metrics, columns=all_metrics
+    )
+
+    return data_df, rank_analysis_df
 
 
 def filter_on_fair_unfair(
