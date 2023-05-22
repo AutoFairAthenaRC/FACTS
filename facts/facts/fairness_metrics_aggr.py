@@ -266,6 +266,7 @@ def get_comb_df(
         for metric, c in row.items():
             id_tmp = metric
             val = None
+
             if metric[1] == "value":
                 map_scores[(i, metric)] = c
                 continue
@@ -280,12 +281,21 @@ def get_comb_df(
                 )
                 if c == 0:
                     val = "Fair"
-                elif metric[0] in rev_bias_metrics:
-                    val = (
+                elif (type(metric) is tuple):
+                    if metric[0] in rev_bias_metrics:
+                        val = (
                         sensitive_attribute_vals[0]
                         if val == sensitive_attribute_vals[1]
                         else sensitive_attribute_vals[1]
                     )
+                else:
+                    if metric in rev_bias_metrics:
+                        val = (
+                        sensitive_attribute_vals[0]
+                        if val == sensitive_attribute_vals[1]
+                        else sensitive_attribute_vals[1]
+                    )
+                        
             map_bias[(i, id_tmp)] = val
 
     comb_columns = pd.MultiIndex.from_product(
