@@ -28,6 +28,7 @@ def clean_dataset(X : DataFrame, dataset : str) -> DataFrame:
         X['priors_count'] = pd.cut(X['priors_count'],[-0.1,1,5,10,15,38])
         X.target.replace('Recidivated',0,inplace=True)
         X.target.replace('Survived',1,inplace=True)
+        X['age_cat'].replace('Less than 25','10-25',inplace=True)
 
     return X
 
