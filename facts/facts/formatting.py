@@ -156,7 +156,8 @@ def print_recourse_report(
     subgroup_costs: Optional[Dict[Predicate, Dict[str, float]]] = None,
     aggregate_cors_costs: Optional[Dict[Predicate, Dict[str, List[Tuple[float, float]]]]] = None,
     show_subgroup_costs: bool = False,
-    show_bias: Optional[str] = None
+    show_bias: Optional[str] = None,
+    metric_name: str = 'Equal Effectiveness'
 ) -> None:
     if len(rules) == 0:
         print(f"{Style.BRIGHT}With the given parameters, no recourses showing unfairness have been found!{Style.RESET_ALL}")
@@ -206,7 +207,7 @@ def print_recourse_report(
             max_intergroup_cost_diff = max(curr_subgroup_costs.values()) - min(curr_subgroup_costs.values())
             biased_subgroup, max_cost = max(curr_subgroup_costs.items(), key=lambda p: p[1])
             if max_intergroup_cost_diff > 0:
-                print(f"\t{Fore.MAGENTA}Bias against {biased_subgroup}. Unfairness score = {round(max_intergroup_cost_diff,2)}.{Fore.RESET}")
+                print(f"\t{Fore.MAGENTA}Bias against {biased_subgroup} due to {metric_name}. Unfairness score = {round(max_intergroup_cost_diff,2)}.{Fore.RESET}")
             else:
                 print(f"\t{Fore.MAGENTA}No bias!{Fore.RESET}")
 
@@ -227,8 +228,9 @@ def print_recourse_report_cumulative(
     show_then_costs: bool = False,
     show_cumulative_plots: bool = False,
     show_bias: Optional[str] = None,
-    correctness_metric : bool = False
-) -> None:
+    correctness_metric : bool = False,
+    metric_name : str = 'Equal Effectiveness'
+    ) -> None:
     if len(rules) == 0:
         print(f"{Style.BRIGHT}With the given parameters, no recourses showing unfairness have been found!{Style.RESET_ALL}")
     
@@ -285,7 +287,7 @@ def print_recourse_report_cumulative(
                 max_intergroup_cost_diff = max(curr_subgroup_costs.values()) - min(curr_subgroup_costs.values())
                 biased_subgroup, max_cost = min(curr_subgroup_costs.items(), key=lambda p: p[1])
             if max_intergroup_cost_diff > 0:
-                print(f"\t{Fore.MAGENTA}Bias against {biased_subgroup}. Unfairness score = {round(max_intergroup_cost_diff,3)}.{Fore.RESET}")
+                print(f"\t{Fore.MAGENTA}Bias against {biased_subgroup} due to {metric_name}. Unfairness score = {round(max_intergroup_cost_diff,3)}.{Fore.RESET}")
             else:
                 print(f"\t{Fore.MAGENTA}No bias!{Fore.RESET}")
 
@@ -303,7 +305,8 @@ def print_recourse_report_KStest_cumulative(
     missing_subgroup_val: str = "N/A",
     unfairness: Optional[Dict[Predicate, float]] = None,
     show_then_costs: bool = False,
-    show_cumulative_plots: bool = False
+    show_cumulative_plots: bool = False,
+    metric_name = 'Fair Effectiveness-Cost Trade-Off'
 ) -> None:
     if len(rules) == 0:
         print(f"{Style.BRIGHT}With the given parameters, no recourses showing unfairness have been found!{Style.RESET_ALL}")
@@ -341,7 +344,7 @@ def print_recourse_report_KStest_cumulative(
             
         if unfairness is not None:
                 curr_subgroup_costs = unfairness[ifclause]
-                print(f"\t{Fore.MAGENTA} Unfairness based on the Kolmogorov-Smirnov test = {round(curr_subgroup_costs,2)}.{Fore.RESET}")
+                print(f"\t{Fore.MAGENTA} Unfairness based on the {metric_name} = {round(curr_subgroup_costs,2)}.{Fore.RESET}")
     
 
         if show_cumulative_plots:
