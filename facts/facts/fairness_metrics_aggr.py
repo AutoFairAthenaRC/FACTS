@@ -412,7 +412,12 @@ def get_comb_df(
 
 
 def get_analysis_dfs(
-    comb_df, diff_real_val, rev_bias_metrics, ranked, sensitive_attribute_vals
+    comb_df,
+    diff_real_val,
+    rev_bias_metrics,
+    ranked,
+    sensitive_attribute_vals,
+    percentage=0.1,
 ):
     metrics = ranked.columns
     (
@@ -430,12 +435,12 @@ def get_analysis_dfs(
 
     for metric in metrics:
         subgroups_with_rank = [
-            (sg, rank) if rank != "Fair" else (sg, np.inf)
+            (sg, rank)
             for (metric_, sg), rank in metric_sg_to_rank.items()
-            if metric_ == metric
+            if metric_ == metric and rank != "Fair"
         ]
         subgroups_with_rank = sorted(subgroups_with_rank, key=lambda x: x[1])
-        percentange = int(len(subgroups_with_rank) * 0.1)
+        percentange = int(len(subgroups_with_rank) * percentage)
         percentage_male_cnt = 0
         percentage_female_cnt = 0
 
