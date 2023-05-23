@@ -128,8 +128,13 @@ def recIsValid(p1: Predicate, p2: Predicate,X: DataFrame ,drop_infeasible: bool)
     if drop_infeasible == True:
         if all(map(operator.eq, p1.features, p2.features)) and any(map(operator.ne, p1.values, p2.values)):
             for count,feat in enumerate(p1.features):
+                if (p1.values[count] != 'Unknown' and p2.values[count]=='Unknown'):
+                    return False
                 if feat == 'age':
                     age_change = p1.values[count].left <= p2.values[count].left
+                    feat_change = feat_change and age_change
+                elif feat == 'ages':
+                    age_change = p1.values[count] <= p2.values[count]
                     feat_change = feat_change and age_change
                 elif feat == 'education-num':
                     edu_change = p1.values[count] <= p2.values[count]
