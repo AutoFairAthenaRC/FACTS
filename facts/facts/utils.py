@@ -127,7 +127,7 @@ def table_to_latex(
                 rank = r"\textbf{\textcolor{red}{1}}"
             score = row[col_df_name]["score"]
             bias_against = row[col_df_name]["bias against"]
-            ret += f"& {rank} & {bias_against} & {score} "
+            ret += f"& {rank} & {bias_against} & {round(score,3)} "
         ret += r"\\" + "\n"
 
     ret += r"""
