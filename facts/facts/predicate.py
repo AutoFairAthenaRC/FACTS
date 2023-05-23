@@ -130,6 +130,9 @@ def recIsValid(p1: Predicate, p2: Predicate,X: DataFrame ,drop_infeasible: bool)
             for count,feat in enumerate(p1.features):
                 if (p1.values[count] != 'Unknown' and p2.values[count]=='Unknown'):
                     return False
+                if feat == 'parents':
+                    parents_change = p1.values[count] <= p2.values[count]
+                    feat_change = feat_change and parents_change
                 if feat == 'age':
                     age_change = p1.values[count].left <= p2.values[count].left
                     feat_change = feat_change and age_change
