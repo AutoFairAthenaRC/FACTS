@@ -50,8 +50,6 @@ The above assets can be found in the directory [Pre-computed Results](facts/Pre-
 
 ## Results
 
-We provide notebooks with examples and detailed instructions of how our framework can be used in order to audit fairness. All these reside in the  directory.
-
 We provide our main experimental results, together with the code that produces them, in the Jupyter notebooks located in the [Notebooks](facts/Notebooks) directory.
 
 For each case study we have two notebooks. One that shows how our framework can be used for the generation of a large set of candidate counterfactuals, and another which showcases how one can get aggregate statistics of the raw results.
