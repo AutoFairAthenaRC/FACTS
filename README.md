@@ -48,11 +48,28 @@ In the scope of precomputed results, we provide:
 
 The above assets can be found in the directory [Pre-computed Results](facts/Pre-computed%20Results). The commands required to read them are displayed in the Jupyter notebooks we provide (more on this in the following sections).
 
-## Auditing for Fairness
+## Results
 
-We provide notebooks with examples and detailed instructions of how our framework can be used in order to audit fairness. All these reside in the [Notebooks](facts/Notebooks) directory.
+We provide notebooks with examples and detailed instructions of how our framework can be used in order to audit fairness. All these reside in the  directory.
 
-## Results ?
+We provide our main experimental results, together with the code that produces them, in the Jupyter notebooks located in the [Notebooks](facts/Notebooks) directory.
+
+For each case study we have two notebooks. One that shows how our framework can be used for the generation of a large set of candidate counterfactuals, and another which showcases how one can get aggregate statistics of the raw results.
+
+Specifically, for the calculation of the ground set of candidate counterfactuals we have the following notebooks:
+- [Adult race](facts/Notebooks/Adult/AdultDataset_sex.ipynb)
+- [Adult race](facts/Notebooks/Adult/AdultDataset_race.ipynb)
+- [COMPAS](facts/Notebooks/COMPAS/CompasDataset.ipynb)
+- [SSL](facts/Notebooks/SSL/SSLDataset.ipynb)
+- [Ad Campaign](facts/Notebooks/AdCampaing/Ad%20Campaign%20Dataset.ipynb)
+
+and the following notebooks deal with the aggregate statistics:
+- [Adult race](facts/Notebooks/Adult/Adult-sex-Experiments.ipynb)
+- [Adult race](facts/Notebooks/Adult/Adult_race-Experiments.ipynb)
+- [COMPAS](facts/Notebooks/COMPAS/Compas-Experiments.ipynb)
+- [SSL](facts/Notebooks/SSL/SSL-Experiments.ipynb)
+- [Ad Campaign](facts/Notebooks/AdCampaing/AdCampaing-Experiments.ipynb)
+
 
 --- Table 1.
 
