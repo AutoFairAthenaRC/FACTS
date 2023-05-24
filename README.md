@@ -57,14 +57,14 @@ We provide our main experimental results, together with the code that produces t
 For each case study we have two notebooks. One that shows how our framework can be used for the generation of a large set of candidate counterfactuals, and another which showcases how one can get aggregate statistics of the raw results.
 
 Specifically, for the calculation of the ground set of candidate counterfactuals we have the following notebooks:
-- [Adult race](facts/Notebooks/Adult/AdultDataset_sex.ipynb)
+- [Adult sex](facts/Notebooks/Adult/AdultDataset_sex.ipynb)
 - [Adult race](facts/Notebooks/Adult/AdultDataset_race.ipynb)
 - [COMPAS](facts/Notebooks/COMPAS/CompasDataset.ipynb)
 - [SSL](facts/Notebooks/SSL/SSLDataset.ipynb)
 - [Ad Campaign](facts/Notebooks/AdCampaing/Ad%20Campaign%20Dataset.ipynb)
 
 and the following notebooks deal with the aggregate statistics:
-- [Adult race](facts/Notebooks/Adult/Adult-sex-Experiments.ipynb)
+- [Adult sex](facts/Notebooks/Adult/Adult-sex-Experiments.ipynb)
 - [Adult race](facts/Notebooks/Adult/Adult_race-Experiments.ipynb)
 - [COMPAS](facts/Notebooks/COMPAS/Compas-Experiments.ipynb)
 - [SSL](facts/Notebooks/SSL/SSL-Experiments.ipynb)
