@@ -312,12 +312,12 @@ def get_other_ranks_divided(rank_analysis_df, metric_to_max_rank):
     rank_divided = rank_analysis_df.copy()
     for x in rank_divided.index:
         for y in rank_divided.columns:
-            max_rank = metric_to_max_rank[y]
+            max_rank = metric_to_max_rank[y] + 1
             mean_ranks = rank_divided.at[x, y]
             result = mean_ranks / max_rank
             rank_divided.at[x, y] = np.round(result, 3)
             if x == y:
-                rank_divided.at[x, y] = 1
+                rank_divided.at[x, y] = '-'
     return rank_divided
 
 
