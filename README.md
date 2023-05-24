@@ -54,7 +54,7 @@ You can download pretrained model for the Adult dataset that was used in the mai
 
 ## Auditing for Fairness
 
-We provide notebooks with examples and detailed instructions of how our framework can be used in order to audit fairness. All these reside in the directory ./notebooks.
+We provide notebooks with examples and detailed instructions of how our framework can be used in order to audit fairness. All these reside in the directory ./facts/Νotebooks (for now, only for the Adult Dataset).
 
 ## Results ?
 
