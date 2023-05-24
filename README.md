@@ -46,7 +46,7 @@ In the scope of precomputed results, we provide:
 - only for the Adult dataset with 'race' as the protected attribute, we have also provided a file which, in addition to the rules, contains the actual model and the test data we used, which are the main inputs required by our framework. Note: for reading this file correctly, you will probably need to have `scikit-learn` version 1.0.2 installed.
 - finally, all experiments we ran use 131313 as the value of the random_state parameter, wherever applicable (notice that, for example, the `LogisticRegression` model with default parameters is deterministic).
 
-The above assets can be found in the directory [Pre-computed Results](facts/Pre-computed Results/). The commands required to read them are displayed in the Jupyter notebooks we provide (more on this in the following sections).
+The above assets can be found in the directory [Pre-computed Results](facts/Pre-computed%20Results). The commands required to read them are displayed in the Jupyter notebooks we provide (more on this in the following sections).
 
 ## Auditing for Fairness
 
