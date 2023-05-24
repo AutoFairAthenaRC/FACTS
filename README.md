@@ -56,7 +56,7 @@ We provide notebooks with examples and detailed instructions of how our framewor
 
 ## Results ?
 
-We have implemented the rules for definitions fo fairness ...
+We have implemented the rules for definitions of fairness ...
 
 According to these, we rank the groups and the first 
 
