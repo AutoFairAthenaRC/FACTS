@@ -61,7 +61,7 @@ Specifically, for the calculation of the ground set of candidate counterfactuals
 - [SSL](facts/Notebooks/SSL/SSLDataset.ipynb)
 - [Ad Campaign](facts/Notebooks/AdCampaing/Ad%20Campaign%20Dataset.ipynb)
 
-and the following notebooks deal with the aggregate statistics:
+and the following notebooks deal with the aggregate ranking statistics:
 - [Adult sex](facts/Notebooks/Adult/Adult-sex-Experiments.ipynb)
 - [Adult race](facts/Notebooks/Adult/Adult_race-Experiments.ipynb)
 - [COMPAS](facts/Notebooks/COMPAS/Compas-Experiments.ipynb)
