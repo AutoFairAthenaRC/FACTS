@@ -317,7 +317,7 @@ def get_other_ranks_divided(rank_analysis_df, metric_to_max_rank):
             result = mean_ranks / max_rank
             rank_divided.at[x, y] = np.round(result, 3)
             if x == y:
-                rank_divided.at[x, y] = '-'
+                rank_divided.at[x, y] = np.nan
     return rank_divided
 
 
