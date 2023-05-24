@@ -187,7 +187,7 @@ def make_table(
             ("Equal Cost of Effectiveness(Micro)", th)
             for th in effectiveness_thresholds
         ]
-        + ["mean-cost-cinf", "Equal(Conditional Mean Recourse)"]
+        + ["mean-cost-cinf", "Equal(Conditional) Mean Recourse"]
     )
     cols = pd.MultiIndex.from_product([cols, sensitive_attribute_vals])
     cols = pd.MultiIndex.from_tuples(

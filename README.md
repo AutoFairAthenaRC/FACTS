@@ -1,12 +1,14 @@
 # Fairness Aware Counterfactuals for Subgroups
 
-This repository is the official implementation of [Fairness Aware Counterfactuals for Subgroups](https://example.com).
+This repository is the implementation of the paper Fairness Aware Counterfactuals for Subgroups.
 
 >📋  Optional: include a graphic explaining your approach/main result, bibtex entry, link to demos, blog posts and tutorials
 
+----> lets say the first image of the paper (if-thens).
+
 ## Requirements
 
-All experiments were run on the [Anaconda](https://www.anaconda.com/) platform. Creating a conda environment is recommended to avoid package version collisions. You can do that with:
+All experiments were run on the [Anaconda](https://www.anaconda.com/) platform. Creating a conda environment is generally recommended to avoid package version collisions. You can do that with:
 
 ```setup
 conda create --name facts 
@@ -30,41 +32,41 @@ Optional Dependency on IBM Fairness 360 if you would like to run on the exact sa
 conda install -c conda-forge aif360
 ```
 
->📋  Describe how to set up the environment, e.g. pip/conda/docker commands, download datasets, etc...
 
-## Training ?
+## Model Training
 
-To train the model(s) in the paper, run this command:
+A model is needed for auditing purposes. We trained, in our paper, a logistic regression classifier. Any other classification model could be used.
 
-```train
-python train.py --input-data <path_to_data> --alpha 10 --beta 20
-```
+Specifically, our method expects a model with the form of `facts.models.ModelAPI`, which means simply any python object with a `predict` method which takes as input a DataFrame containing the dataset and outputs a 1-dimensional prediction array of 0s and 1s.
 
->📋  Describe how to train the models, with example commands on how to train the models in your paper, including the full training procedure and appropriate hyperparameters.
 
-## Evaluation ?
 
-To evaluate my model on ImageNet, run:
+## Pre-trained Models / Pre-computed results
 
-```eval
-python eval.py --model-file mymodel.pth --benchmark imagenet
-```
+In the scope of precomputed results, we provide:
+- full sets of precomputed rules for each dataset (with a frequent itemset minimum support of 1%).
+- only for the Adult dataset with 'race' as the protected attribute, we have also provided a file which, in addition to the rules, contains the actual model and the test data we used, which are the main inputs required by our framework.
+- finally, all experiments we ran use 131313 as the value of the random_state parameter, wherever applicable (notice that, for example, the `LogisticRegression` model with default parameters is deterministic).
 
->📋  Describe how to evaluate the trained models on benchmarks reported in the paper, give commands that produce the results (section below).
-
-## Pre-trained Models ?
-
-You can download pretrained models here:
-
-- [My awesome model](https://drive.google.com/mymodel.pth) trained on ImageNet using parameters x,y,z. 
+You can download pretrained model for the Adult dataset that was used in the main paper results here: [link]()
 
 >📋  Give a link to where/how the pretrained models can be downloaded and how they were trained (if applicable).  Alternatively you can have an additional column in your results table with a link to the models.
 
+## Auditing for Fairness
+
+We provide notebooks with examples and detailed instructions of how our framework can be used in order to audit fairness. All these reside in the directory ./notebooks.
+
 ## Results ?
 
-Our model achieves the following performance on :
+We have implemented the rules for definitions fo fairness ...
 
-### [Image Classification on ImageNet](https://paperswithcode.com/sota/image-classification-on-imagenet)
+According to these, we rank the groups and the first 
+
+-- All in paper: examples, table from main
+
+ The framework allows to query with sugroup id and with rank and perform comparative evaluation / summary for the results, e.g. ....
+
+For more information, see jupyter notebook ...
 
 | Model name         | Top 1 Accuracy  | Top 5 Accuracy |
 | ------------------ |---------------- | -------------- |
