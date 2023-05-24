@@ -61,7 +61,7 @@ Specifically, for the calculation of the ground set of candidate counterfactuals
 - [SSL](facts/Notebooks/SSL/SSLDataset.ipynb)
 - [Ad Campaign](facts/Notebooks/AdCampaing/Ad%20Campaign%20Dataset.ipynb)
 
-and the following notebooks deal with the aggregate ranking statistics:
+and the following notebooks include with the aggregate ranking statistics:
 - [Adult sex](facts/Notebooks/Adult/Adult-sex-Experiments.ipynb)
 - [Adult race](facts/Notebooks/Adult/Adult_race-Experiments.ipynb)
 - [COMPAS](facts/Notebooks/COMPAS/Compas-Experiments.ipynb)
@@ -78,21 +78,5 @@ The respective results can be seen in our paper, in the Appendices C and D. More
 Both notebooks, for each dataset, also contain a series of examples on the generation of Comparative Subgroup Counterfactuals, which is a central representation of the output of our method.
 
 
---- Table 1.
 
-We have implemented the rules for definitions of fairness ...
-
-According to these, we rank the groups and the first 
-
--- All in paper: examples, table from main
-
- The framework allows to query with sugroup id and with rank and perform comparative evaluation / summary for the results, e.g. ....
-
-For more information, see jupyter notebook ...
-
-| Model name         | Top 1 Accuracy  | Top 5 Accuracy |
-| ------------------ |---------------- | -------------- |
-| My awesome model   |     85%         |      95%       |
-
->📋  Include a table of results from your paper, and link back to the leaderboard for clarity and context. If your main result is a figure, include that figure and link to the command or notebook to reproduce it. 
 
