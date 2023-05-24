@@ -54,7 +54,7 @@ The above assets can be found in the directory [Pre-computed Results](facts/Pre-
 
 ## Auditing for Fairness
 
-We provide notebooks with examples and detailed instructions of how our framework can be used in order to audit fairness. All these reside in the [Notebooks](facts/Νotebooks/) directory (for now, only for the Adult Dataset).
+We provide notebooks with examples and detailed instructions of how our framework can be used in order to audit fairness. All these reside in the [Notebooks](facts/Νotebooks/) directory.
 
 ## Results ?
 
