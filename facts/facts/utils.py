@@ -7,6 +7,17 @@ from pandas import DataFrame
 from .predicate import Predicate
 from .models import ModelAPI
 
+def load_object(file: PathLike) -> object:
+    p = Path(file)
+    with p.open("rb") as inf:
+        ret = dill.load(inf)
+    return ret
+
+def save_object(file: PathLike, o: object) -> None:
+    p = Path(file)
+    with p.open("wb") as outf:
+        dill.dump(o, outf)
+
 def load_rules_by_if(file: PathLike) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]]:
     p = Path(file)
     with p.open("rb") as inf:
