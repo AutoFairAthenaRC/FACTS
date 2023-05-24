@@ -73,9 +73,9 @@ and the following notebooks include with the aggregate ranking statistics:
 The respective results can be seen in our paper, in the Appendices C and D. More specifically:
 - For the Adult dataset with the sex as protected attribute, we show some Comparative Subgroup Counterfactuals in the main part of the paper, in Figures 2 and 3, their ranking statistics in Table 1 of the main paper and some aggregate statistics in Tables 10 and 11 of the Appendix D.
 - For the Adult dataset with the race as protected attribute, we show some Comparative Subgroup Counterfactuals in Figure 4 and their ranking statistics in Table 6 of the Appendix C and some aggregate statistics in Tables 12 and 13 of the Appendix D.
-- For the COMPAS dataset (with race as the protected attribute), we show some Comparative Subgroup Counterfactuals in Figure 5 and their ranking statistics in Table 7 of the Appendix C and some aggregate statistics in Tables 13 and 14 of the Appendix D.
-- For the SSL dataset, we show some Comparative Subgroup Counterfactuals in Figure 6 and their ranking statistics in Table 8 of the Appendix C and some aggregate statistics in Tables 15 and 16 of the Appendix D.
-- For the Ad Campaign dataset, we show some Comparative Subgroup Counterfactuals in Figure 7 and their ranking statistics in Table 9 of the Appendix C and some aggregate statistics in Tables 17 and 18 of the Appendix D.
+- For the COMPAS dataset (with race as the protected attribute), we show some Comparative Subgroup Counterfactuals in Figure 5 and their ranking statistics in Table 7 of the Appendix C and some aggregate statistics in Tables 14 and 15 of the Appendix D.
+- For the SSL dataset, we show some Comparative Subgroup Counterfactuals in Figure 6 and their ranking statistics in Table 8 of the Appendix C and some aggregate statistics in Tables 16 and 17 of the Appendix D.
+- For the Ad Campaign dataset, we show some Comparative Subgroup Counterfactuals in Figure 7 and their ranking statistics in Table 9 of the Appendix C and some aggregate statistics in Tables 18 and 19 of the Appendix D.
 
 Both notebooks, for each dataset, also contain a series of examples on the generation of Comparative Subgroup Counterfactuals, which is a central representation of the output of our method.
 
