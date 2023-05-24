@@ -63,14 +63,14 @@ Specifically, for the calculation of the ground set of candidate counterfactuals
 - [SSL](facts/Notebooks/SSL/SSLDataset.ipynb)
 - [Ad Campaign](facts/Notebooks/AdCampaing/Ad%20Campaign%20Dataset.ipynb)
 
-and the following notebooks include with the aggregate ranking statistics:
+and the following notebooks include the aggregate ranking statistics:
 - [Adult sex](facts/Notebooks/Adult/Adult-sex-Experiments.ipynb)
 - [Adult race](facts/Notebooks/Adult/Adult_race-Experiments.ipynb)
 - [COMPAS](facts/Notebooks/COMPAS/Compas-Experiments.ipynb)
 - [SSL](facts/Notebooks/SSL/SSL-Experiments.ipynb)
 - [Ad Campaign](facts/Notebooks/AdCampaing/AdCampaing-Experiments.ipynb)
 
-The respective results can be seen in our paper, in the Appendices C and D. More specifically:
+The respective results can be seen in our main paper and  in the Appendices C and D. More specifically:
 - For the Adult dataset with the sex as protected attribute, we show some Comparative Subgroup Counterfactuals in the main part of the paper, in Figures 2 and 3, their ranking statistics in Table 1 of the main paper and some aggregate statistics in Tables 10 and 11 of the Appendix D.
 - For the Adult dataset with the race as protected attribute, we show some Comparative Subgroup Counterfactuals in Figure 4 and their ranking statistics in Table 6 of the Appendix C and some aggregate statistics in Tables 12 and 13 of the Appendix D.
 - For the COMPAS dataset (with race as the protected attribute), we show some Comparative Subgroup Counterfactuals in Figure 5 and their ranking statistics in Table 7 of the Appendix C and some aggregate statistics in Tables 14 and 15 of the Appendix D.
