@@ -6,7 +6,7 @@ This repository is the implementation of the paper Fairness Aware Counterfactual
 
 ## Requirements
 
-All experiments were run on the [Anaconda](https://www.anaconda.com/) platform. Creating a conda environment is generally recommended to avoid package version collisions. You can do that with:
+All experiments were run on the [Anaconda](https://www.anaconda.com/) platform using python version 3.9.16. Creating a conda environment is generally recommended to avoid package version collisions. You can do that with:
 
 ```setup
 conda create --name facts
@@ -67,6 +67,15 @@ and the following notebooks deal with the aggregate ranking statistics:
 - [COMPAS](facts/Notebooks/COMPAS/Compas-Experiments.ipynb)
 - [SSL](facts/Notebooks/SSL/SSL-Experiments.ipynb)
 - [Ad Campaign](facts/Notebooks/AdCampaing/AdCampaing-Experiments.ipynb)
+
+The respective results can be seen in our paper, in the Appendices C and D. More specifically:
+- For the Adult dataset with the sex as protected attribute, we show some Comparative Subgroup Counterfactuals in the main part of the paper, in Figures 2 and 3. We show some aggregate statistics in Tables 1 and 10.
+- For the Adult dataset with the race as protected attribute, we show in Appendix C.1, CSCs in Figure 4 and aggregate statistics in Tables 6 and and 10.
+- For the COMPAS dataset (with race as the protected attribute), CSCs are shown in Figure 5 and some ranking statistics in Table 7.
+- For the SSL dataset, CSCs are shown in Figure 6 and some ranking statistics in Table 8.
+- For the Ad Campaign dataset, CSCs are shown in Figure 7 and some ranking statistics in Table 9
+
+Both notebooks, for each dataset, also contain a series of examples on the generation of Comparative Subgroup Counterfactuals, which is a central representation of the output of our method.
 
 
 --- Table 1.
