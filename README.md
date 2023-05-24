@@ -2,7 +2,7 @@
 
 This repository is the implementation of the paper Fairness Aware Counterfactuals for Subgroups (FACTS). FACTS is a framework for auditing subgroup fairness through counterfactual explanations. We aim to (a) formulate different aspects of the difficulty of individuals in certain subgroups to achieve recourse, i.e. receive the desired outcome, either at the micro level, considering members of the subgroup individually, or at the macro level, considering the subgroup as a whole, and (b) introduce notions of subgroup fairness that are robust, if not totally oblivious, to the cost of achieving recourse. 
 
-[Comparative Subgroup Counterfactuals Example](imgs/micro_min_above_thres_0.3_rules.png)
+![Comparative Subgroup Counterfactuals Example](imgs/micro_min_above_thres_0.3_rules.png)
 
 ## Requirements
 
