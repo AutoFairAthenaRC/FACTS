@@ -8,28 +8,18 @@ In our work, we call the above representation "Comparative Subgroup Counterfactu
 
 ## Requirements
 
-All experiments were run on the [Anaconda](https://www.anaconda.com/) platform using python version 3.9.16. Creating a conda environment is generally recommended to avoid package version collisions. You can do that with:
+All experiments were run on the [Anaconda](https://www.anaconda.com/) platform using python version 3.9.16. To avoid bugs due to incompatible package versions, we have exported the [yaml file](conda_env.yml) for the conda environment on which we worked.
+
+To create a conda environment with the same configuration, run:
 
 ```setup
-conda create --name facts
+conda create --name facts --file conda_env.yml
 ```
 
 and then activate it with
 
 ```setup
 conda activate facts
-```
-
- To install requirements:
-
-```setup
-conda install -c conda-forge numpy pandas scikit-learn matplotlib mlxtend omnixai xgboost notebook
-```
-
-Optional Dependency on IBM Fairness 360 if you would like to run on the exact same "COMPAS" dataset as we did:
-
-```setup
-conda install -c conda-forge aif360
 ```
 
 
