@@ -308,6 +308,17 @@ def get_diff_real_diff_drop(df, diff, sensitive_attribute_vals):
     return diff_real_val, diff_drop
 
 
+def get_other_ranks_divided(rank_analysis_df, metric_to_max_rank):
+    rank_divided = rank_analysis_df.copy()
+    for x in rank_divided.index:
+        for y in rank_divided.columns:
+            max_rank = metric_to_max_rank[y]
+            mean_ranks = rank_divided.at[x, y]
+            result = mean_ranks / max_rank
+            rank_divided.at[x, y] = np.round(result, 3)
+    return rank_divided
+
+
 def get_metric_analysis_maps(comb_df, metrics, ranked, sensitive_attribute_vals):
     metric_sg_to_rank = get_map_metric_sg_to_rank(ranked)
     metric_to_max_rank = get_map_metric_to_max_rank(ranked)
