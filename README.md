@@ -4,6 +4,8 @@ This repository is the implementation of the paper Fairness Aware Counterfactual
 
 ![Comparative Subgroup Counterfactuals Example](imgs/micro_min_above_thres_0.3_rules.png)
 
+In our work, we call the above representation "Comparative Subgroup Counterfactuals". These if-then rules, along with the effectiveness that each action manages to achieve (micro or micro, see Section 2.2 of our paper) give, in our opinion, a very clear and intuitive insight into certain type of bias that a machine learning model may exhibit.
+
 ## Requirements
 
 All experiments were run on the [Anaconda](https://www.anaconda.com/) platform using python version 3.9.16. Creating a conda environment is generally recommended to avoid package version collisions. You can do that with:
