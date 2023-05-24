@@ -2,14 +2,14 @@
 
 This repository is the implementation of the paper Fairness Aware Counterfactuals for Subgroups (FACTS). FACTS is a framework for auditing subgroup fairness through counterfactual explanations. We aim to (a) formulate different aspects of the difficulty of individuals in certain subgroups to achieve recourse, i.e. receive the desired outcome, either at the micro level, considering members of the subgroup individually, or at the macro level, considering the subgroup as a whole, and (b) introduce notions of subgroup fairness that are robust, if not totally oblivious, to the cost of achieving recourse. 
 
-[Comparative Subgroup Counterfactuals]()
+[Comparative Subgroup Counterfactuals Example](imgs/micro_min_above_thres_0.3_rules.png)
 
 ## Requirements
 
 All experiments were run on the [Anaconda](https://www.anaconda.com/) platform. Creating a conda environment is generally recommended to avoid package version collisions. You can do that with:
 
 ```setup
-conda create --name facts 
+conda create --name facts
 ```
 
 and then activate it with
@@ -53,6 +53,8 @@ The above assets can be found in the directory [Pre-computed Results](facts/Pre-
 We provide notebooks with examples and detailed instructions of how our framework can be used in order to audit fairness. All these reside in the [Notebooks](facts/Notebooks) directory.
 
 ## Results ?
+
+--- Table 1.
 
 We have implemented the rules for definitions of fairness ...
 
