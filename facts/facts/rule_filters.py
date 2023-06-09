@@ -129,7 +129,7 @@ def keep_cheapest_rules_above_cumulative_correctness_threshold(
             filtered_thens: List[Tuple[Predicate, float, float]] = []
             for then, cor, cost in sg_thens:
                 filtered_thens.append((then, cor, cost))
-                if cor > threshold:
+                if cor >= threshold:
                     break
             filtered_thenclauses[sg] = (cov, filtered_thens)
         ret[ifclause] = filtered_thenclauses
