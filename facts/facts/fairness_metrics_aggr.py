@@ -29,6 +29,24 @@ def auto_budget_calculation(
     percentiles: List[float],
     ignore_inf: bool = True,
 ) -> List[float]:
+    """
+    Automatically calculate budget values based on the rules and thresholds.
+
+    Args:
+        rules_with_cumulative (Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]):
+            A dictionary mapping Predicates to dictionaries of cumulative rules.
+        cor_thres (float):
+            The threshold value for correctness.
+        percentiles (List[float]):
+            A list of percentiles to calculate.
+        ignore_inf (bool, optional):
+            Flag indicating whether to ignore infinity values in the calculation.
+            Defaults to True.
+
+    Returns:
+        List[float]:
+            A list of calculated budget values at the specified percentiles.
+    """
     all_minchanges_to_thres = []
     for ifc, all_thens in rules_with_cumulative.items():
         for sg, (cov, thens) in all_thens.items():
@@ -54,6 +72,27 @@ def make_table(
     c_infty_coeff: float = 2.0,
     params: ParameterProxy = ParameterProxy(),
 ) -> DataFrame:
+    """
+    Create a table summarizing various evaluation metrics for the rules.
+
+    Args:
+        rules_with_both_corrs (Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]):
+            A dictionary mapping Predicates to dictionaries of rules with both correctness measures.
+        sensitive_attribute_vals (List[str]):
+            A list of sensitive attribute values.
+        effectiveness_thresholds (List[float]):
+            A list of effectiveness thresholds.
+        cost_budgets (List[float]):
+            A list of cost budgets.
+        c_infty_coeff (float, optional):
+            The coefficient for the C_infty cost function. Defaults to 2.0.
+        params (ParameterProxy, optional):
+            A parameter proxy object. Defaults to ParameterProxy().
+
+    Returns:
+        DataFrame:
+            A pandas DataFrame summarizing the evaluation metrics for the rules.
+    """
     rows = []
     for ifclause, all_thens in rules_with_both_corrs.items():
         thens_with_atomic = {
@@ -207,6 +246,21 @@ def get_diff_table(
     sensitive_attribute_vals: List[str] = ["Male", "Female"],
     with_abs: bool = True,
 ) -> DataFrame:
+    """
+    Create a table showing the differences between evaluation metrics for different sensitive attribute values.
+
+    Args:
+        df (DataFrame):
+            The input DataFrame containing the evaluation metrics.
+        sensitive_attribute_vals (List[str], optional):
+            A list of sensitive attribute values. Defaults to ["Male", "Female"].
+        with_abs (bool, optional):
+            Flag indicating whether to calculate absolute differences. Defaults to True.
+
+    Returns:
+        DataFrame:
+            A pandas DataFrame showing the differences between evaluation metrics.
+    """
     z = df.copy()
     z = z.drop(columns=[("subgroup", "subgroup")])
     diff = pd.DataFrame()
@@ -235,6 +289,16 @@ def get_diff_table(
 
 
 def get_map_metric_sg_to_rank(ranked):
+    """
+    Create a mapping from metric and subgroup to rank.
+
+    Args:
+        ranked (DataFrame):
+            The input DataFrame containing the ranked metrics for each subgroup.
+
+    Returns:
+        A dictionary mapping from metric and subgroup to rank.
+    """
     metric_sg_to_rank = {}
     for sg, row in ranked.iterrows():
         for metric_, rank_ in row.items():
@@ -243,6 +307,18 @@ def get_map_metric_sg_to_rank(ranked):
 
 
 def get_map_metric_sg_to_score(diff_drop, diff_real_val):
+    """
+    Create a mapping from metric and subgroup to score.
+
+    Args:
+        diff_drop (DataFrame):
+            The DataFrame containing the score differences.
+        diff_real_val (DataFrame):
+            The DataFrame containing the score differences with no absolute values.
+
+    Returns:
+        A dictionary mapping from metric and subgroup to score.
+    """
     metric_sg_to_score = {}
     for sg, row in diff_drop.iterrows():
         for metric_, score_ in row.items():
@@ -258,6 +334,20 @@ def get_map_metric_sg_to_score(diff_drop, diff_real_val):
 def get_map_metric_sg_to_bias_against(
     diff_real_val, rev_bias_metrics, sensitive_attribute_vals
 ):
+    """
+    Create a mapping from metric and subgroup to bias against.
+
+    Args:
+        diff_real_val (DataFrame):
+            The DataFrame containing the score differences with no absolute values.
+        rev_bias_metrics:
+            A list or set of metrics considered for bias reversal.
+        sensitive_attribute_vals (List[str]):
+            The list of sensitive attribute values.
+
+    Returns:
+        A dictionary mapping from metric and subgroup to the bias against value.
+    """
     metric_sg_to_bias_against = {}
     for sg, row in diff_real_val.iterrows():
         for metric, diff_ in row.items():
@@ -288,6 +378,16 @@ def get_map_metric_sg_to_bias_against(
 
 
 def get_map_metric_to_max_rank(ranked):
+    """
+    Create a mapping from metric to maximum rank.
+
+    Args:
+        ranked (DataFrame):
+            The DataFrame containing the ranked metrics.
+
+    Returns:
+        A dictionary mapping from metric to the maximum rank or "Fair".
+    """
     metric_to_max_rank = {}
 
     for sg, row in ranked.iterrows():
@@ -302,6 +402,23 @@ def get_map_metric_to_max_rank(ranked):
 
 
 def get_diff_real_diff_drop(df, diff, sensitive_attribute_vals):
+    """
+    Get the diff table with no absolute values and the diff table with dropped specific column.
+
+    Args:
+        df (DataFrame):
+            The original DataFrame.
+        diff (DataFrame):
+            The difference DataFrame.
+        sensitive_attribute_vals (List[str]):
+            The list of sensitive attribute values.
+
+    Returns:
+        Tuple[DataFrame, DataFrame]:
+            A tuple containing two DataFrames: diff_real_val and diff_drop.
+            - diff_real_val: DataFrame representing the difference between real values.
+            - diff_drop: DataFrame representing the difference but specific column in dropped.
+    """
     diff_real_val = get_diff_table(df, sensitive_attribute_vals, with_abs=False)
     diff_real_val = diff_real_val.set_index("subgroup")
     diff_drop = diff.drop(columns=[("Fair Effectiveness-Cost Trade-Off", "bias")])
@@ -309,6 +426,19 @@ def get_diff_real_diff_drop(df, diff, sensitive_attribute_vals):
 
 
 def get_other_ranks_divided(rank_analysis_df, metric_to_max_rank):
+    """
+    Get the ranks divided by the maximum rank for other metrics.
+
+    Args:
+        rank_analysis_df (DataFrame):
+            The rank analysis DataFrame.
+        metric_to_max_rank:
+            A dictionary mapping metrics to their maximum rank.
+
+    Returns:
+        DataFrame:
+            A DataFrame representing the ranks divided by the maximum rank for other metrics.
+    """
     rank_divided = rank_analysis_df.copy()
     for x in rank_divided.index:
         for y in rank_divided.columns:
@@ -322,6 +452,23 @@ def get_other_ranks_divided(rank_analysis_df, metric_to_max_rank):
 
 
 def get_metric_analysis_maps(comb_df, metrics, ranked, sensitive_attribute_vals):
+    """
+    Get metric analysis maps.
+
+    Args:
+        comb_df (DataFrame):
+            The combination DataFrame.
+        metrics:
+            The list of metrics.
+        ranked (DataFrame):
+            The ranked DataFrame.
+        sensitive_attribute_vals (List[str]):
+            The list of sensitive attribute values.
+
+    Returns:
+        A tuple containing the metric_rank_one, metric_male_cnt,
+            metric_female_cnt, and other_ranks dictionaries.
+    """
     metric_sg_to_rank = get_map_metric_sg_to_rank(ranked)
     metric_to_max_rank = get_map_metric_to_max_rank(ranked)
     metric_rank_one = {}
@@ -384,6 +531,25 @@ def get_comb_df(
     ],
     sensitive_attribute_vals: List[str] = ["Male", "Female"],
 ):
+    """
+    Get combination DataFrame.
+
+    Args:
+        df (pd.DataFrame):
+            The original DataFrame.
+        ranked (pd.DataFrame):
+            The ranked DataFrame.
+        diff (pd.DataFrame):
+            The diff DataFrame.
+        rev_bias_metrics (List[str], optional):
+            The list of reverse bias metrics. Defaults to ["Equal Effectiveness", "Equal Effectiveness within Budget"].
+        sensitive_attribute_vals (List[str], optional):
+            The list of sensitive attribute values. Defaults to ["Male", "Female"].
+
+    Returns:
+        pd.DataFrame:
+            The combination DataFrame.
+    """
     diff_real_val, diff_drop = get_diff_real_diff_drop(
         df, diff, sensitive_attribute_vals
     )
@@ -432,6 +598,29 @@ def get_analysis_dfs(
     sensitive_attribute_vals,
     percentage=0.1,
 ):
+    """
+    Get analysis DataFrames.
+
+    Args:
+        comb_df (pd.DataFrame):
+            The combination DataFrame.
+        diff_real_val (pd.DataFrame):
+            The diff real value DataFrame.
+        rev_bias_metrics (List[str]):
+            The list of reverse bias metrics.
+        ranked (pd.DataFrame):
+            The ranked DataFrame.
+        sensitive_attribute_vals (List[str]):
+            The list of sensitive attribute values.
+        percentage (float, optional):
+            The percentage value. Defaults to 0.1.
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame]:
+            A tuple containing data_df and rank_analysis_df.
+            - data_df: The data DataFrame.
+            - rank_analysis_df: The rank analysis DataFrame.
+    """
     metrics = ranked.columns
     (
         metric_rank_one,
@@ -519,6 +708,26 @@ def filter_on_fair_unfair(
     fair_token: str,
     rank_upper: int,
 ) -> DataFrame:
+    """
+    Filter the ranked DataFrame based on fair and unfair criteria.
+
+    Args:
+        ranked (pd.DataFrame):
+            The ranked DataFrame.
+        fair_lower_bound (int):
+            The lower bound for the number of fair ranks in a subgroup.
+        unfair_lower_bound (int):
+            The lower bound for the number of unfair ranks in a subgroup.
+        fair_token (str):
+            The token representing a fair rank.
+        rank_upper (int):
+            The upper bound for the ranks considered unfair.
+
+    Returns:
+        pd.DataFrame:
+            The filtered DataFrame containing only the fair and unfair subgroups.
+    """
+
     def elem_to_bool(x):
         if x == fair_token:
             return False
