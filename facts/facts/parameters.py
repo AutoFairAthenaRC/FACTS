@@ -1,7 +1,9 @@
-from typing import Dict, Callable, Any, List
+from typing import Dict, Callable, Any, List, Optional
 import functools
 from collections import defaultdict
 from dataclasses import dataclass, field
+
+from pandas import DataFrame
 
 
 def make_default_featureCosts():
@@ -89,6 +91,81 @@ def naive_feature_change_builder(
         for col in num_cols
     }
     return {**ret_cate, **ret_num}
+
+
+def feature_change_builder(
+    X: DataFrame,
+    num_cols: List[str],
+    cate_cols: List[str],
+    ord_cols: List[str],
+    feature_weights: Dict[str, int],
+    num_normalization: bool = False,
+    feats_to_normalize: Optional[List[str]] = None,
+) -> Dict[str, Callable[[Any, Any], int]]:
+    """Constructs a dictionary of feature change functions based on the input parameters.
+
+    Args:
+        X (DataFrame): The input DataFrame containing the data.
+        num_cols (List[str]): A list of column names representing the numeric features.
+        cate_cols (List[str]): A list of column names representing the categorical features.
+        ord_cols (List[str]): _description_
+        feature_weights (Dict[str, int]): A dictionary mapping feature names to their corresponding weights.
+        num_normalization (bool, optional): A flag indicating whether to normalize numeric features. Default is False.
+        feats_to_normalize (Optional[List[str]], optional):
+            A list of column names specifying the numeric features to be normalized.
+            If None, all numeric features will be normalized. Default is None.
+
+    Returns:
+        Dict[str, Callable[[Any, Any], int]]:
+            A dictionary mapping feature names to the corresponding
+            feature change functions.
+    """
+
+    def feature_change_cate(v1, v2, weight):
+        return (0 if v1 == v2 else 1) * weight
+
+    def feature_change_num(v1, v2, weight):
+        return abs(v1 - v2) * weight
+
+    def feature_change_ord(v1, v2, weight, t):
+        return abs(t[v1] - t[v2]) * weight
+
+    ### normalization of numeric features
+    max_vals = X.max(axis=0)
+    min_vals = X.min(axis=0)
+    weight_multipliers = {}
+    for col in num_cols:
+        weight_multipliers[col] = 1
+    for col in cate_cols:
+        weight_multipliers[col] = 1
+    if num_normalization:
+        if feats_to_normalize is not None:
+            for col in feats_to_normalize:
+                weight_multipliers[col] = 1 / (max_vals[col] - min_vals[col])
+        else:
+            for col in num_cols:
+                weight_multipliers[col] = 1 / (max_vals[col] - min_vals[col])
+
+    ret_cate = {
+        col: functools.partial(feature_change_cate, weight=feature_weights.get(col, 1))
+        for col in cate_cols
+    }
+    ret_num = {
+        col: functools.partial(
+            feature_change_num,
+            weight=weight_multipliers[col] * feature_weights.get(col, 1),
+        )
+        for col in num_cols
+    }
+    ret_ord = {
+        col: functools.partial(
+            feature_change_ord,
+            weight=feature_weights.get(col, 1),
+            t={name: code for code, name in enumerate(X[col].cat.categories)},
+        )
+        for col in ord_cols
+    }
+    return {**ret_cate, **ret_num, **ret_ord}
 
 
 @dataclass
