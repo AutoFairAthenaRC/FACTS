@@ -192,6 +192,15 @@ class customLogisticRegression(BaseEstimator, ClassifierMixin):
         return self
 
     def predict(self, X: pd.DataFrame):
+        """
+        Make predictions using the custom Logistic Regression classifier.
+
+        Args:
+            X: DataFrame containing the instances to be predicted.
+
+        Returns:
+            Array of predicted labels.
+        """
         tabular_data = _instances_2tab(X, cate_columns=self.cate_columns)
         x = self.transformer.transform(tabular_data)
         return self.clf.predict(x)
