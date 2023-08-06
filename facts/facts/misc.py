@@ -1,5 +1,5 @@
 from tqdm.auto import tqdm
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Union
 import functools
 
 import numpy as np
@@ -7,6 +7,7 @@ from pandas import DataFrame
 from sklearn.preprocessing import LabelEncoder
 from mlxtend.preprocessing import minmax_scaling
 from collections import defaultdict
+from keras import Model
 
 from .parameters import *
 from .models import ModelAPI
@@ -155,7 +156,9 @@ def affected_unaffected_split(
 
 
 def affected_unaffected_split_NN(
-    X: DataFrame, model: ModelAPI, label_encoder_dict: defaultdict[LabelEncoder]
+    X: DataFrame,
+    model: Union[ModelAPI, Model],
+    label_encoder_dict: defaultdict[LabelEncoder],
 ) -> Tuple[DataFrame, DataFrame]:
     # get model predictions
     preds = model.predict(
@@ -211,7 +214,7 @@ def calculate_correctnesses_NN(
     ifthens_withsupp: List[Tuple[Predicate, Predicate, Dict[str, float]]],
     affected_by_subgroup: Dict[str, DataFrame],
     sensitive_attribute: str,
-    model: ModelAPI,
+    model: Union[ModelAPI, Model],
     label_encoder_dict: defaultdict[LabelEncoder],
 ) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
     subgroup_names = list(affected_by_subgroup.keys())
@@ -305,7 +308,7 @@ def aff_intersection_version_2(RLs_and_supports, subgroups):
 
 def valid_ifthens_with_coverage_correctness_NN(
     X: DataFrame,
-    model: ModelAPI,
+    model: Union[ModelAPI, Model],
     label_encoder_dict: defaultdict[LabelEncoder],
     sensitive_attribute: str,
     freqitem_minsupp: float = 0.01,
@@ -859,6 +862,82 @@ def cum_corr_costs(
     ]
 
     return updated_thens
+
+
+def cum_corr_costs_NN(
+    ifclause: Predicate,
+    thenclauses: List[Tuple[Predicate, float]],
+    X: DataFrame,
+    model: Union[ModelAPI, Model],
+    label_encoder_dict: defaultdict[LabelEncoder],
+    params: ParameterProxy = ParameterProxy(),
+) -> List[Tuple[Predicate, float, float]]:
+    withcosts = [
+        (thenclause, cor, featureChangePred(ifclause, thenclause, params))
+        for thenclause, cor in thenclauses
+    ]
+    thens_sorted_by_cost = sorted(withcosts, key=lambda c: (c[2], c[1]))
+
+    X_covered_bool = (X[ifclause.features] == ifclause.values).all(axis=1)
+    X_covered = X[X_covered_bool]
+    covered_count = X_covered.shape[0]
+
+    cumcorrs = []
+    for thenclause, _cor, _cost in thens_sorted_by_cost:
+        if X_covered.shape[0] == 0:
+            cumcorrs.append(0)
+            continue
+        X_temp = X_covered.copy()
+        X_temp[thenclause.features] = thenclause.values
+        preds = model.predict(
+            X_temp.apply(lambda x: label_encoder_dict[x.name].transform(x)).values,
+            verbose=0,
+        )
+
+        corrected_count = np.sum(preds)
+        cumcorrs.append(corrected_count)
+        X_covered = X_covered[~preds.astype(bool)]  # type: ignore
+
+    cumcorrs = np.array(cumcorrs).cumsum() / covered_count
+    updated_thens = [
+        (thenclause, cumcor, float(cost))
+        for (thenclause, _cor, cost), cumcor in zip(thens_sorted_by_cost, cumcorrs)
+    ]
+
+    return updated_thens
+
+
+def cum_corr_costs_all_NN(
+    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
+    X: DataFrame,
+    model: Union[ModelAPI, Model],
+    label_encoder_dict: defaultdict[LabelEncoder],
+    sensitive_attribute: str,
+    params: ParameterProxy = ParameterProxy(),
+) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]:
+    X_affected: DataFrame = X[model.predict(X.apply(lambda x: label_encoder_dict[x.name].transform(x)).values, verbose=0) == 0]  # type: ignore
+    ret: Dict[
+        Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]
+    ] = {}
+    for ifclause, all_thens in tqdm(rulesbyif.items()):
+        all_thens_new: Dict[
+            str, Tuple[float, List[Tuple[Predicate, float, float]]]
+        ] = {}
+        for sg, (cov, thens) in all_thens.items():
+            subgroup_affected = X_affected[X_affected[sensitive_attribute] == sg]
+            all_thens_new[sg] = (
+                cov,
+                cum_corr_costs_NN(
+                    ifclause,
+                    thens,
+                    subgroup_affected,
+                    model,
+                    label_encoder_dict,
+                    params=params,
+                ),
+            )
+        ret[ifclause] = all_thens_new
+    return ret
 
 
 def cum_corr_costs_all(

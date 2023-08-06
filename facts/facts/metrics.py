@@ -47,7 +47,7 @@ def incorrectRecoursesIfThen_NN(
     X_aff_covered[thenclause.features] = thenclause.values
 
     preds = model.predict(
-        X_aff_covered.apply(lambda x: label_encoder_dict[x.name].transform(x)).values
+        X_aff_covered.apply(lambda x: label_encoder_dict[x.name].transform(x)).values, verbose=0,
     )
     return np.shape(preds)[0] - np.sum(preds)
 

@@ -11,7 +11,7 @@ from omnixai.preprocessing.tabular import TabularTransform
 
 
 class ModelAPI(Protocol):
-    def predict(self, X: ArrayLike) -> ArrayLike:
+    def predict(self, X: ArrayLike, verbosity: int = 0) -> ArrayLike:
         ...
 
 
@@ -129,7 +129,7 @@ class customXGB:
         """
         tabular_data = _instances_2tab(X, cate_columns=self.cate_columns)
         x = self.transformer.transform(tabular_data)
-        return self.clf.predict(x)
+        return self.clf.predict(x, verbosity=0)
 
 
 #    def accuracy(self, X, y: pd.Series) -> float:
