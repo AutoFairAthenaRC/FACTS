@@ -1,11 +1,12 @@
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from typing import List, Tuple, Dict, Optional
 import functools
 
 import numpy as np
 from pandas import DataFrame
-
+from sklearn.preprocessing import LabelEncoder
 from mlxtend.preprocessing import minmax_scaling
+from collections import defaultdict
 
 from .parameters import *
 from .models import ModelAPI
@@ -14,6 +15,7 @@ from .frequent_itemsets import runApriori, preprocessDataset, aprioriout2predica
 from .recourse_sets import TwoLevelRecourseSet
 from .metrics import (
     incorrectRecoursesIfThen,
+    incorrectRecoursesIfThen_NN,
     if_group_cost_mean_with_correctness,
     if_group_cost_min_change_correctness_threshold,
     if_group_cost_mean_change_correctness_threshold,
@@ -24,7 +26,7 @@ from .metrics import (
     if_group_cost_min_change_correctness_cumulative_threshold,
     if_group_cost_change_cumulative_threshold,
     if_group_average_recourse_cost_cinf,
-    if_group_average_recourse_cost_conditional
+    if_group_average_recourse_cost_conditional,
 )
 from .optimization import (
     optimize_vanilla,
@@ -33,7 +35,7 @@ from .optimization import (
     sort_triples_by_max_costdiff_ignore_nans_infs,
     sort_triples_by_max_costdiff_generic,
     sort_triples_by_max_costdiff_generic_cumulative,
-    sort_triples_KStest
+    sort_triples_KStest,
 )
 from .rule_filters import (
     filter_by_correctness,
@@ -47,11 +49,12 @@ from .rule_filters import (
     filter_by_cost_cumulative,
     delete_fair_rules_cumulative,
     keep_only_minimum_change_cumulative,
-    keep_cheapest_rules_above_cumulative_correctness_threshold
+    keep_cheapest_rules_above_cumulative_correctness_threshold,
 )
 
 # Re-exporting
 from .formatting import plot_aggregate_correctness, print_recourse_report
+
 # Re-exporting
 
 
@@ -151,6 +154,24 @@ def affected_unaffected_split(
     return X_aff, X_unaff
 
 
+def affected_unaffected_split_NN(
+    X: DataFrame, model: ModelAPI, label_encoder_dict: defaultdict[LabelEncoder]
+) -> Tuple[DataFrame, DataFrame]:
+    # get model predictions
+    preds = model.predict(
+        X.apply(lambda x: label_encoder_dict[x.name].transform(x)).values
+    )
+    # find affected individuals
+    X_aff_idxs = np.where(preds == 0)[0]
+    X_aff = X.iloc[X_aff_idxs, :]
+
+    # find unaffected individuals
+    X_unaff_idxs = np.where(preds == 1)[0]
+    X_unaff = X.iloc[X_unaff_idxs, :]
+
+    return X_aff, X_unaff
+
+
 def freqitemsets_with_supports(
     X: DataFrame, min_support: float = 0.01
 ) -> Tuple[List[Predicate], List[float]]:
@@ -176,6 +197,34 @@ def calculate_correctnesses(
                 s,
                 affected_by_subgroup[sg].assign(**{sensitive_attribute: sg}),
                 model,
+            )
+            covered_sg = ifsupps[sg] * affected_by_subgroup[sg].shape[0]
+            inc_sg = incorrect_recourses_for_sg / covered_sg
+            recourse_correctness[sg] = 1 - inc_sg
+
+        ifthens_with_correctness.append((h, s, ifsupps, recourse_correctness))
+
+    return ifthens_with_correctness
+
+
+def calculate_correctnesses_NN(
+    ifthens_withsupp: List[Tuple[Predicate, Predicate, Dict[str, float]]],
+    affected_by_subgroup: Dict[str, DataFrame],
+    sensitive_attribute: str,
+    model: ModelAPI,
+    label_encoder_dict: defaultdict[LabelEncoder],
+) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
+    subgroup_names = list(affected_by_subgroup.keys())
+    ifthens_with_correctness = []
+    for h, s, ifsupps in tqdm(ifthens_withsupp, desc="Test description"):
+        recourse_correctness = {}
+        for sg in subgroup_names:
+            incorrect_recourses_for_sg = incorrectRecoursesIfThen_NN(
+                h,
+                s,
+                affected_by_subgroup[sg].assign(**{sensitive_attribute: sg}),
+                model,
+                label_encoder_dict,
             )
             covered_sg = ifsupps[sg] * affected_by_subgroup[sg].shape[0]
             inc_sg = incorrect_recourses_for_sg / covered_sg
@@ -254,6 +303,128 @@ def aff_intersection_version_2(RLs_and_supports, subgroups):
 #     return set1 == set2
 
 
+def valid_ifthens_with_coverage_correctness_NN(
+    X: DataFrame,
+    model: ModelAPI,
+    label_encoder_dict: defaultdict[LabelEncoder],
+    sensitive_attribute: str,
+    freqitem_minsupp: float = 0.01,
+    missing_subgroup_val: str = "N/A",
+    drop_infeasible: bool = True,
+    drop_above: bool = True,
+) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
+    # throw out all individuals for whom the value of the sensitive attribute is unknown
+    X = X[X[sensitive_attribute] != missing_subgroup_val]
+
+    # split into affected-unaffected
+    X_aff, X_unaff = affected_unaffected_split_NN(X, model, label_encoder_dict)
+
+    # find descriptors of all sensitive subgroups
+    subgroups = np.unique(X[sensitive_attribute])
+    # split affected individuals into subgroups
+    affected_subgroups = {
+        sg: X_aff[X_aff[sensitive_attribute] == sg].drop([sensitive_attribute], axis=1)
+        for sg in subgroups
+    }
+
+    # calculate frequent itemsets for each subgroup and turn them into predicates
+    print(
+        "Computing frequent itemsets for each subgroup of the affected instances.",
+        flush=True,
+    )
+    RLs_and_supports = {
+        sg: freqitemsets_with_supports(affected_sg, min_support=freqitem_minsupp)
+        for sg, affected_sg in tqdm(affected_subgroups.items())
+    }
+
+    # intersection of frequent itemsets of all sensitive subgroups
+    print(
+        "Computing the intersection between the frequent itemsets of each subgroup of the affected instances.",
+        flush=True,
+    )
+
+    # aff_intersection_1 = aff_intersection_version_1(RLs_and_supports, subgroups)
+    aff_intersection_2 = aff_intersection_version_2(RLs_and_supports, subgroups)
+
+    # print(len(aff_intersection_1), len(aff_intersection_2))
+    # if check_list_eq(aff_intersection_1, aff_intersection_2):
+    #     print("ERRRROOROROROROROROROROROR")
+
+    aff_intersection = aff_intersection_2
+
+    # Frequent itemsets for the unaffacted (to be used in the then clauses)
+    freq_unaffected, _ = freqitemsets_with_supports(
+        X_unaff, min_support=freqitem_minsupp
+    )
+
+    # Filter all if-then pairs to keep only valid
+    print(
+        "Computing all valid if-then pairs between the common frequent itemsets of each subgroup of the affected instances and the frequent itemsets of the unaffacted instances.",
+        flush=True,
+    )
+
+    # ifthens_1 = [
+    #     (h, s, ifsupps)
+    #     for h, ifsupps in tqdm(aff_intersection)
+    #     for s in freq_unaffected
+    #     if recIsValid(h, s, affected_subgroups[subgroups[0]], drop_infeasible)
+    # ]
+
+    # we want to create a dictionary for freq_unaffected key: features in tuple, value: list(values)
+    # for each Predicate in aff_intersection we loop through the list from dictionary
+    # create dictionary:
+
+    freq_unaffected_dict = {}
+    for predicate_ in freq_unaffected:
+        if tuple(predicate_.features) in freq_unaffected_dict:
+            freq_unaffected_dict[tuple(predicate_.features)].append(predicate_.values)
+        else:
+            freq_unaffected_dict[tuple(predicate_.features)] = [predicate_.values]
+
+    ifthens_2 = []
+    for predicate_, supps_dict in tqdm(aff_intersection):
+        candidates = freq_unaffected_dict.get(tuple(predicate_.features))
+        if candidates == None:
+            continue
+        for candidate_values in candidates:
+            # resIsValid can be changed to avoid checking if features are the same
+            if recIsValid(
+                predicate_,
+                Predicate(predicate_.features, candidate_values),
+                affected_subgroups[subgroups[0]],
+                drop_infeasible,
+            ):
+                ifthens_2.append(
+                    (
+                        predicate_,
+                        Predicate(predicate_.features, candidate_values),
+                        supps_dict,
+                    )
+                )
+    # print(len(ifthens_1), len(ifthens_2))
+    # if ifthens_1 != ifthens_2:
+    #     print("ERORORORORORORO")
+
+    ifthens = ifthens_2
+    # keep ifs that have change on features of max value 2
+    if drop_above == True:
+        age = [val.left for val in X.age.unique()]
+        age.sort()
+        ifthens = [
+            (ifs, then, cov)
+            for ifs, then, cov in ifthens
+            if drop_two_above(ifs, then, age)
+        ]
+
+    # Calculate incorrectness percentages
+    print("Computing correctenesses for all valid if-thens.", flush=True)
+    ifthens_with_correctness = calculate_correctnesses_NN(
+        ifthens, affected_subgroups, sensitive_attribute, model, label_encoder_dict
+    )
+
+    return ifthens_with_correctness
+
+
 def valid_ifthens_with_coverage_correctness(
     X: DataFrame,
     model: ModelAPI,
@@ -299,7 +470,7 @@ def valid_ifthens_with_coverage_correctness(
     # print(len(aff_intersection_1), len(aff_intersection_2))
     # if check_list_eq(aff_intersection_1, aff_intersection_2):
     #     print("ERRRROOROROROROROROROROROR")
-    
+
     aff_intersection = aff_intersection_2
 
     # Frequent itemsets for the unaffacted (to be used in the then clauses)
@@ -508,8 +679,11 @@ def select_rules_subset(
 
     return top_rules, costs
 
+
 def select_rules_subset_cumulative(
-    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+    rulesbyif: Dict[
+        Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]
+    ],
     metric: str = "total-correctness",
     sort_strategy: str = "abs-diff-decr",
     top_count: int = 10,
@@ -529,7 +703,8 @@ def select_rules_subset_cumulative(
     ] = {
         "total-correctness": if_group_total_correctness,
         "min-above-corr": functools.partial(
-            if_group_cost_min_change_correctness_cumulative_threshold, cor_thres=cor_threshold
+            if_group_cost_min_change_correctness_cumulative_threshold,
+            cor_thres=cor_threshold,
         ),
         "max-upto-cost": functools.partial(
             if_group_cost_change_cumulative_threshold, cost_thres=cost_threshold
@@ -537,12 +712,16 @@ def select_rules_subset_cumulative(
         "fairness-of-mean-recourse-cinf": functools.partial(
             if_group_average_recourse_cost_cinf,
             correctness_caps={
-                ifc: max(corr for _sg, (_cov, thens) in thencs.items() for _then, corr, _cost in thens)
+                ifc: max(
+                    corr
+                    for _sg, (_cov, thens) in thencs.items()
+                    for _then, corr, _cost in thens
+                )
                 for ifc, thencs in rulesbyif.items()
             },
-            c_infty_coeff=c_inf
+            c_infty_coeff=c_inf,
         ),
-        "fairness-of-mean-recourse-conditional": if_group_average_recourse_cost_conditional
+        "fairness-of-mean-recourse-conditional": if_group_average_recourse_cost_conditional,
     }
     sorting_functions = {
         "generic-sorting": functools.partial(
@@ -583,8 +762,15 @@ def select_rules_subset_cumulative(
     filters: Dict[
         str,
         Callable[
-            [Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]],
-            Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+            [
+                Dict[
+                    Predicate,
+                    Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]],
+                ]
+            ],
+            Dict[
+                Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]
+            ],
         ],
     ] = {
         "remove-contained": functools.partial(
@@ -597,9 +783,12 @@ def select_rules_subset_cumulative(
             filter_by_cost_cumulative, threshold=cost_threshold
         ),
         "keep-cheap-rules-above-thr-cor": functools.partial(
-            keep_cheapest_rules_above_cumulative_correctness_threshold, threshold=cor_threshold
+            keep_cheapest_rules_above_cumulative_correctness_threshold,
+            threshold=cor_threshold,
         ),
-        "remove-fair-rules": functools.partial(delete_fair_rules_cumulative, subgroup_costs=costs),
+        "remove-fair-rules": functools.partial(
+            delete_fair_rules_cumulative, subgroup_costs=costs
+        ),
         "keep-only-min-change": functools.partial(
             keep_only_minimum_change_cumulative, params=params
         ),
@@ -609,14 +798,17 @@ def select_rules_subset_cumulative(
 
     return top_rules, costs
 
+
 def select_rules_subset_KStest(
-    rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
+    rulesbyif: Dict[
+        Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]
+    ],
     affected_population_sizes: Dict[str, int],
     top_count: int = 10,
-    filter_contained: bool = False
+    filter_contained: bool = False,
 ) -> Tuple[
     Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
-    Dict[Predicate, float]
+    Dict[Predicate, float],
 ]:
     # step 1: sort according to metric
     rules_sorted, unfairness = sort_triples_KStest(rulesbyif, affected_population_sizes)
@@ -628,6 +820,7 @@ def select_rules_subset_KStest(
         top_rules = filter_contained_rules_simple_cumulative(top_rules)
 
     return top_rules, unfairness
+
 
 def cum_corr_costs(
     ifclause: Predicate,
@@ -676,25 +869,36 @@ def cum_corr_costs_all(
     params: ParameterProxy = ParameterProxy(),
 ) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]:
     X_affected: DataFrame = X[model.predict(X) == 0]  # type: ignore
-    ret: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]] = {}
+    ret: Dict[
+        Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]
+    ] = {}
     for ifclause, all_thens in tqdm(rulesbyif.items()):
-        all_thens_new: Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]] = {}
+        all_thens_new: Dict[
+            str, Tuple[float, List[Tuple[Predicate, float, float]]]
+        ] = {}
         for sg, (cov, thens) in all_thens.items():
             subgroup_affected = X_affected[X_affected[sensitive_attribute] == sg]
-            all_thens_new[sg] = (cov, cum_corr_costs(
-                ifclause, thens, subgroup_affected, model, params=params
-            ))
+            all_thens_new[sg] = (
+                cov,
+                cum_corr_costs(
+                    ifclause, thens, subgroup_affected, model, params=params
+                ),
+            )
         ret[ifclause] = all_thens_new
     return ret
 
+
 def update_costs_cumulative(
-    rules: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
-    params: ParameterProxy = ParameterProxy()
+    rules: Dict[
+        Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]
+    ],
+    params: ParameterProxy = ParameterProxy(),
 ) -> None:
     for ifc, allthens in rules.items():
         for sg, (cov, sg_thens) in allthens.items():
             for i, (then, corr, cost) in enumerate(sg_thens):
                 sg_thens[i] = (then, corr, featureChangePred(ifc, then, params))
+
 
 def cum_corr_costs_all_minimal(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float]]]]],
@@ -711,5 +915,3 @@ def cum_corr_costs_all_minimal(
             thens_plain = [(corr, cost) for _then, corr, cost in thens]
             ret[ifclause][sg] = thens_plain
     return ret
-
-
