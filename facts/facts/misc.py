@@ -286,6 +286,8 @@ def valid_ifthens_with_coverage_correctness(
         sg: freqitemsets_with_supports(affected_sg, min_support=freqitem_minsupp)
         for sg, affected_sg in tqdm(affected_subgroups.items())
     }
+    lens = {sg: len(rls[0]) for sg, rls in RLs_and_supports.items()}
+    print(f"Number of frequent itemsets for affected: {lens}", flush=True)
 
     # intersection of frequent itemsets of all sensitive subgroups
     print(
@@ -301,11 +303,13 @@ def valid_ifthens_with_coverage_correctness(
     #     print("ERRRROOROROROROROROROROROR")
     
     aff_intersection = aff_intersection_2
+    print(f"Number of groups from the intersection: {len(aff_intersection)}", flush=True)
 
     # Frequent itemsets for the unaffacted (to be used in the then clauses)
     freq_unaffected, _ = freqitemsets_with_supports(
         X_unaff, min_support=freqitem_minsupp
     )
+    print(f"Number of frequent itemsets for the unaffected: {len(freq_unaffected)}", flush=True)
 
     # Filter all if-then pairs to keep only valid
     print(
