@@ -262,7 +262,7 @@ def valid_ifthens_with_coverage_correctness(
     missing_subgroup_val: str = "N/A",
     drop_infeasible: bool = True,
     drop_above: bool = True,
-) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
+) -> Tuple[List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]], Any]:
     # throw out all individuals for whom the value of the sensitive attribute is unknown
     X = X[X[sensitive_attribute] != missing_subgroup_val]
 
@@ -288,6 +288,7 @@ def valid_ifthens_with_coverage_correctness(
     }
     lens = {sg: len(rls[0]) for sg, rls in RLs_and_supports.items()}
     print(f"Number of frequent itemsets for affected: {lens}", flush=True)
+    rest_ret = {"freq-itemsets-no": lens}
 
     # intersection of frequent itemsets of all sensitive subgroups
     print(
@@ -303,13 +304,15 @@ def valid_ifthens_with_coverage_correctness(
     #     print("ERRRROOROROROROROROROROROR")
     
     aff_intersection = aff_intersection_2
-    print(f"Number of groups from the intersection: {len(aff_intersection)}", flush=True)
+    print(f"Number of subgroups in the intersection: {len(aff_intersection)}", flush=True)
+    rest_ret["inter-groups-no"] = len(aff_intersection)
 
     # Frequent itemsets for the unaffacted (to be used in the then clauses)
     freq_unaffected, _ = freqitemsets_with_supports(
         X_unaff, min_support=freqitem_minsupp
     )
     print(f"Number of frequent itemsets for the unaffected: {len(freq_unaffected)}", flush=True)
+    rest_ret["unaff-freq-itemsets-no"] = len(freq_unaffected)
 
     # Filter all if-then pairs to keep only valid
     print(
@@ -376,7 +379,7 @@ def valid_ifthens_with_coverage_correctness(
         ifthens, affected_subgroups, sensitive_attribute, model
     )
 
-    return ifthens_with_correctness
+    return ifthens_with_correctness, rest_ret
 
 
 def rules2rulesbyif(
