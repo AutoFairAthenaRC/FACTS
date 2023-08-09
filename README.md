@@ -13,7 +13,7 @@ All experiments were run on the [Anaconda](https://www.anaconda.com/) platform u
 To create a conda environment with the same configuration, run:
 
 ```setup
-conda create --name facts --file conda_env.yml
+conda env create --name facts --file conda_env.yml
 ```
 
 and then activate it with
