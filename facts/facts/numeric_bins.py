@@ -7,6 +7,7 @@ from pandas import DataFrame
 
 from .parameters import ParameterProxy
 from .predicate import Predicate
+from .models import ModelAPI
 from .metrics import (
     if_group_cost_recoursescount_correctness_threshold_bins,
     if_group_total_correctness,
@@ -115,14 +116,14 @@ def select_rules_subset_bins(
         "num-above-thr": functools.partial(
             if_group_cost_recoursescount_correctness_threshold_bins, cor_thres=cor_threshold
         ),
-        "total-correctness": if_group_total_correctness,
-        "min-above-corr": functools.partial(
-            if_group_cost_min_change_correctness_cumulative_threshold, cor_thres=cor_threshold
-        ),
-        "max-upto-cost": functools.partial(
-            if_group_cost_change_cumulative_threshold, cost_thres=cost_threshold
-        ),
-        "fairness-of-mean-recourse-conditional": if_group_average_recourse_cost_conditional
+        # "total-correctness": if_group_total_correctness,
+        # "min-above-corr": functools.partial(
+        #     if_group_cost_min_change_correctness_cumulative_threshold, cor_thres=cor_threshold
+        # ),
+        # "max-upto-cost": functools.partial(
+        #     if_group_cost_change_cumulative_threshold, cost_thres=cost_threshold
+        # ),
+        # "fairness-of-mean-recourse-conditional": if_group_average_recourse_cost_conditional
     }
     sorting_functions = {
         "generic-sorting": functools.partial(
@@ -173,19 +174,54 @@ def select_rules_subset_bins(
         "remove-below-thr": functools.partial(
             filter_by_correctness_cumulative, threshold=cor_threshold
         ),
-        "remove-above-thr-cost": functools.partial(
-            filter_by_cost_cumulative, threshold=cost_threshold
-        ),
-        "keep-cheap-rules-above-thr-cor": functools.partial(
-            keep_cheapest_rules_above_cumulative_correctness_threshold, threshold=cor_threshold
-        ),
         "remove-fair-rules": functools.partial(delete_fair_rules_cumulative, subgroup_costs=costs),
-        "keep-only-min-change": functools.partial(
-            keep_only_minimum_change_cumulative, params=params
-        ),
+        # "keep-only-min-change": functools.partial(
+        #     keep_only_minimum_change_cumulative, params=params
+        # ),
+        # "remove-above-thr-cost": functools.partial(
+        #     filter_by_cost_cumulative, threshold=cost_threshold
+        # ),
+        # "keep-cheap-rules-above-thr-cor": functools.partial(
+        #     keep_cheapest_rules_above_cumulative_correctness_threshold, threshold=cor_threshold
+        # ),
     }
     for single_filter in filter_sequence:
         top_rules = filters[single_filter](top_rules)
 
     return top_rules, costs
+
+def cum_corr_costs(
+    ifclause: Predicate,
+    thenclauses: List[Tuple[Predicate, float, float]],
+    X: DataFrame,
+    model: ModelAPI,
+    num_features: List[str]
+) -> List[Tuple[Predicate, float, float]]:
+    # sort by increasing cost
+    thens_sorted_by_cost = sorted(thenclauses, key=lambda c: (c[2], c[1]))
+
+    X_covered = find_covered_individuals(ifclause, X, num_features=num_features)
+    covered_count = X_covered.shape[0]
+
+    cumcorrs = []
+    for thenclause, _cor, cost in thens_sorted_by_cost:
+        if X_covered.shape[0] == 0:
+            cumcorrs.append(0)
+            continue
+        X_temp = X_covered.copy()
+        X_temp[thenclause.features] = thenclause.values
+        preds = model.predict(X_temp)
+
+        corrected_count = np.sum(preds)
+        cumcorrs.append(corrected_count)
+        X_covered = X_covered[~preds.astype(bool)]  # type: ignore
+
+    cumcorrs = np.array(cumcorrs).cumsum() / covered_count
+    updated_thens = [
+        (thenclause, cumcor, float(cost))
+        for (thenclause, _cor, cost), cumcor in zip(thens_sorted_by_cost, cumcorrs)
+    ]
+
+    raise NotImplementedError
+    return updated_thens
 
