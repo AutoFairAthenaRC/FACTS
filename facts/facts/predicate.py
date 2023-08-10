@@ -4,6 +4,7 @@ from enum import Enum
 import operator
 import functools
 
+import pandas as pd
 from pandas import DataFrame
 from .parameters import ParameterProxy
 
@@ -203,6 +204,9 @@ def featureChangePred(
         val1 = p1.values[i]
         val2 = p2.values[i]
         costChange = params.featureChanges[f](val1, val2)
+        # if f in params.num_features:
+        #     i1, i2 = val1, val2
+        #     assert isinstance(i1, pd.Interval) and isinstance(i2, pd.Interval)
         total += costChange
     return total
 
@@ -251,6 +255,12 @@ def recIsValid(
             for count, feat in enumerate(p1.features):
                 if p1.values[count] != "Unknown" and p2.values[count] == "Unknown":
                     return False
+                if isinstance(p1.values[count], pd.Interval):
+                    if isinstance(p2.values[count], pd.Interval):
+                        if p1.values[count].overlaps(p2.values[count]):
+                            return False
+                    else:
+                        raise ValueError("Cannot have interval for an if and not interval for then")
                 if feat == "parents":
                     parents_change = p1.values[count] <= p2.values[count]
                     feat_change = feat_change and parents_change

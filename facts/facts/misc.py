@@ -3,6 +3,7 @@ from typing import List, Tuple, Dict, Optional
 import functools
 
 import numpy as np
+import pandas as pd
 from pandas import DataFrame
 
 from mlxtend.preprocessing import minmax_scaling
@@ -14,6 +15,7 @@ from .frequent_itemsets import runApriori, preprocessDataset, aprioriout2predica
 from .recourse_sets import TwoLevelRecourseSet
 from .metrics import (
     incorrectRecoursesIfThen,
+    incorrectRecoursesIfThen_bins,
     if_group_cost_mean_with_correctness,
     if_group_cost_min_change_correctness_threshold,
     if_group_cost_mean_change_correctness_threshold,
@@ -185,6 +187,32 @@ def calculate_correctnesses(
 
     return ifthens_with_correctness
 
+def calculate_correctnesses_bins(
+    ifthens_withsupp: List[Tuple[Predicate, Predicate, Dict[str, float]]],
+    affected_by_subgroup: Dict[str, DataFrame],
+    sensitive_attribute: str,
+    num_features: List[str],
+    model: ModelAPI,
+) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
+    subgroup_names = list(affected_by_subgroup.keys())
+    ifthens_with_correctness = []
+    for h, s, ifsupps in tqdm(ifthens_withsupp):
+        recourse_correctness = {}
+        for sg in subgroup_names:
+            incorrect_recourses_for_sg = incorrectRecoursesIfThen_bins(
+                h,
+                s,
+                affected_by_subgroup[sg].assign(**{sensitive_attribute: sg}),
+                model,
+                num_features
+            )
+            covered_sg = ifsupps[sg] * affected_by_subgroup[sg].shape[0]
+            inc_sg = incorrect_recourses_for_sg / covered_sg
+            recourse_correctness[sg] = 1 - inc_sg
+
+        ifthens_with_correctness.append((h, s, ifsupps, recourse_correctness))
+
+    return ifthens_with_correctness
 
 def aff_intersection_version_1(RLs_and_supports, subgroups):
     RLs_supports_dict = {
@@ -381,6 +409,141 @@ def valid_ifthens_with_coverage_correctness(
 
     return ifthens_with_correctness, rest_ret
 
+def valid_ifthens_with_coverage_correctness_bins(
+    X: DataFrame,
+    model: ModelAPI,
+    sensitive_attribute: str,
+    num_features: List[str],
+    nbins_affected: int,
+    nbins_unaffected: int,
+    freqitem_minsupp: float = 0.01,
+    drop_infeasible: bool = True,
+    drop_above: bool = True,
+) -> List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]:
+    # split into affected-unaffected
+    X_aff, X_unaff = affected_unaffected_split(X, model)
+    X_aff = X_aff.copy()
+    X_unaff = X_unaff.copy()
+    for col in num_features:
+        bin_edges = np.linspace(X_unaff[col].min(), X_unaff[col].max(), nbins_unaffected)
+        X_unaff[col] = pd.cut(X_unaff[col], bins=bin_edges, include_lowest=True)
+
+        bin_edges = np.linspace(X_aff[col].min(), X_aff[col].max(), nbins_affected)
+        X_aff[col] = pd.cut(X_aff[col], bins=bin_edges, include_lowest=True)
+
+    # find descriptors of all sensitive subgroups
+    subgroups = np.unique(X[sensitive_attribute])
+    # split affected individuals into subgroups
+    affected_subgroups = {
+        sg: X_aff[X_aff[sensitive_attribute] == sg].drop([sensitive_attribute], axis=1)
+        for sg in subgroups
+    }
+
+    # calculate frequent itemsets for each subgroup and turn them into predicates
+    print(
+        "Computing frequent itemsets for each subgroup of the affected instances.",
+        flush=True,
+    )
+    RLs_and_supports = {
+        sg: freqitemsets_with_supports(affected_sg, min_support=freqitem_minsupp)
+        for sg, affected_sg in tqdm(affected_subgroups.items())
+    }
+    lens = {sg: len(rls[0]) for sg, rls in RLs_and_supports.items()}
+    print(f"Number of frequent itemsets for affected: {lens}", flush=True)
+
+    # intersection of frequent itemsets of all sensitive subgroups
+    print(
+        "Computing the intersection between the frequent itemsets of each subgroup of the affected instances.",
+        flush=True,
+    )
+
+    # aff_intersection_1 = aff_intersection_version_1(RLs_and_supports, subgroups)
+    aff_intersection_2 = aff_intersection_version_2(RLs_and_supports, subgroups)
+
+    # print(len(aff_intersection_1), len(aff_intersection_2))
+    # if check_list_eq(aff_intersection_1, aff_intersection_2):
+    #     print("ERRRROOROROROROROROROROROR")
+    
+    aff_intersection = aff_intersection_2
+    print(f"Number of groups from the intersection: {len(aff_intersection)}", flush=True)
+
+    # Frequent itemsets for the unaffacted (to be used in the then clauses)
+    freq_unaffected, _ = freqitemsets_with_supports(
+        X_unaff, min_support=freqitem_minsupp
+    )
+    print(f"Number of frequent itemsets for the unaffected: {len(freq_unaffected)}", flush=True)
+
+    # Filter all if-then pairs to keep only valid
+    print(
+        "Computing all valid if-then pairs between the common frequent itemsets of each subgroup of the affected instances and the frequent itemsets of the unaffacted instances.",
+        flush=True,
+    )
+
+    # ifthens_1 = [
+    #     (h, s, ifsupps)
+    #     for h, ifsupps in tqdm(aff_intersection)
+    #     for s in freq_unaffected
+    #     if recIsValid(h, s, affected_subgroups[subgroups[0]], drop_infeasible)
+    # ]
+
+    # we want to create a dictionary for freq_unaffected key: features in tuple, value: list(values)
+    # for each Predicate in aff_intersection we loop through the list from dictionary
+    # create dictionary:
+
+    freq_unaffected_dict = {}
+    for predicate_ in freq_unaffected:
+        if tuple(predicate_.features) in freq_unaffected_dict:
+            freq_unaffected_dict[tuple(predicate_.features)].append(predicate_.values)
+        else:
+            freq_unaffected_dict[tuple(predicate_.features)] = [predicate_.values]
+
+    ifthens_2 = []
+    for predicate_, supps_dict in tqdm(aff_intersection):
+        candidates = freq_unaffected_dict.get(tuple(predicate_.features))
+        if candidates == None:
+            continue
+        for candidate_values in candidates:
+            # resIsValid can be changed to avoid checking if features are the same
+            if recIsValid(
+                predicate_,
+                Predicate(predicate_.features, candidate_values),
+                affected_subgroups[subgroups[0]],
+                drop_infeasible,
+            ):
+                ifthens_2.append(
+                    (
+                        predicate_,
+                        Predicate(predicate_.features, candidate_values),
+                        supps_dict,
+                    )
+                )
+    # print(len(ifthens_1), len(ifthens_2))
+    # if ifthens_1 != ifthens_2:
+    #     print("ERORORORORORORO")
+
+    ifthens = ifthens_2
+    # keep ifs that have change on features of max value 2
+    if drop_above == True:
+        age = [val.left for val in X.age.unique()]
+        age.sort()
+        ifthens = [
+            (ifs, then, cov)
+            for ifs, then, cov in ifthens
+            if drop_two_above(ifs, then, age)
+        ]
+
+    # Calculate incorrectness percentages
+    print("Computing correctenesses for all valid if-thens.", flush=True)
+    X_aff, _ = affected_unaffected_split(X, model)
+    affected_subgroups = {
+        sg: X_aff[X_aff[sensitive_attribute] == sg].drop([sensitive_attribute], axis=1)
+        for sg in subgroups
+    }
+    ifthens_with_correctness = calculate_correctnesses_bins(
+        ifthens, affected_subgroups, sensitive_attribute, num_features, model
+    )
+
+    return ifthens_with_correctness
 
 def rules2rulesbyif(
     rules: List[Tuple[Predicate, Predicate, Dict[str, float], Dict[str, float]]]

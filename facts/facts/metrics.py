@@ -22,6 +22,48 @@ def incorrectRecoursesIfThen(ifclause: Predicate, thenclause: Predicate, X_aff: 
     preds = model.predict(X_aff_covered)
     return np.shape(preds)[0] - np.sum(preds)
 
+def incorrectRecoursesIfThen_bins(ifclause: Predicate, thenclause: Predicate, X_aff: DataFrame, model: ModelAPI, num_features: List[str]) -> int:
+    if_nonnumeric_feats = [feat for feat in ifclause.features if feat not in num_features]
+    if_nonnumeric_vals = [val for feat, val in zip(ifclause.features, ifclause.values) if feat not in num_features]
+    if_numeric_feats = [feat for feat in ifclause.features if feat in num_features]
+    if_numeric_vals = [val for feat, val in zip(ifclause.features, ifclause.values) if feat in num_features]
+
+    X_aff_covered_bool_nonnumeric = (X_aff[if_nonnumeric_feats] == if_nonnumeric_vals).all(axis=1)
+    X_aff_covered_bool_numeric = X_aff_covered_bool_nonnumeric.map(lambda x: True)
+    if_dict = ifclause.to_dict()
+    for feat in if_numeric_feats:
+        interval = if_dict[feat]
+        assert isinstance(interval, pd.Interval)
+        indicator = (X_aff[feat] > interval.left) & (X_aff[feat] <= interval.right)
+        X_aff_covered_bool_numeric &= indicator
+    X_aff_covered = X_aff[X_aff_covered_bool_nonnumeric & X_aff_covered_bool_numeric].copy()
+
+    if X_aff_covered.shape[0] == 0:
+        raise ValueError("Assuming non-negative frequent itemset threshold, total absence of covered instances should be impossible!")
+    
+    then_nonnumeric_feats = [feat for feat in thenclause.features if feat not in num_features]
+    assert then_nonnumeric_feats == if_nonnumeric_feats
+    then_nonnumeric_vals = [val for feat, val in zip(thenclause.features, thenclause.values) if feat not in num_features]
+    then_numeric_feats = [feat for feat in thenclause.features if feat in num_features]
+    assert then_numeric_feats == if_numeric_feats
+    then_numeric_vals = [val for feat, val in zip(thenclause.features, thenclause.values) if feat in num_features]
+    
+    X_aff_covered[then_nonnumeric_feats] = then_nonnumeric_vals
+    then_dict = thenclause.to_dict()
+    for feat in then_numeric_feats:
+        if_interval = if_dict[feat]
+        assert isinstance(if_interval, pd.Interval)
+        then_interval = then_dict[feat]
+        assert isinstance(then_interval, pd.Interval)
+
+        slope = (then_interval.right - then_interval.left) / (if_interval.right - if_interval.left)
+        lin_map = lambda x: slope * (x - if_interval.left) + then_interval.left
+
+        X_aff_covered[feat] = lin_map(X_aff_covered[feat])
+
+    preds = model.predict(X_aff_covered)
+    return np.shape(preds)[0] - np.sum(preds)
+
 def incorrectRecoursesSingle(sd: Predicate, h: Predicate, s: Predicate, X_aff: DataFrame, model: ModelAPI) -> int:
     """To caller: make sure that h, s is a valid pair of predicates for an if-then clause!"""
     # assert recIsValid(h, s)
@@ -144,6 +186,17 @@ def if_group_cost_recoursescount_correctness_threshold(
 ) -> float:
     feature_changes = np.array([
         featureChangePred(ifclause, thenclause, params=params) for thenclause, cor in thenclauses if cor >= cor_thres
+        ])
+    return -feature_changes.size
+
+def if_group_cost_recoursescount_correctness_threshold_bins(
+    ifclause: Predicate,
+    thenclauses: List[Tuple[Predicate, float, float]],
+    cor_thres: float = 0.5,
+    params: ParameterProxy = ParameterProxy()
+) -> float:
+    feature_changes = np.array([
+        cost for thenclause, cor, cost in thenclauses if cor >= cor_thres
         ])
     return -feature_changes.size
 
