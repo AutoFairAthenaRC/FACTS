@@ -443,3 +443,42 @@ def keep_only_minimum_change_cumulative(
             ]
             ret[ifclause][sg] = (cov, newthens)
     return ret
+
+def keep_only_minimum_change_bins(
+    rulesbyif: Dict[
+        Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]
+    ]
+) -> Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]:
+    """Keeps only the rules with the minimum change in a cumulative manner.
+
+
+    Args:
+        rulesbyif (Dict[ Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]] ]):
+            Dictionary mapping predicates to a dictionary of group IDs and associated cost, correctness, and cumulative cost tuples.
+        params (ParameterProxy, optional):
+            ParameterProxy object containing the parameters for calculating feature change. Defaults to ParameterProxy().
+
+    Returns:
+        Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]]:
+            Dictionary containing the filtered rules where only the rules with the minimum change are kept in a cumulative manner.
+    """
+    ret: Dict[
+        Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]
+    ] = dict()
+    for ifclause, thenclauses in rulesbyif.items():
+        ret[ifclause] = dict()
+        for sg, (cov, thens) in thenclauses.items():
+            min_change = min(
+                (
+                    cost
+                    for then, cor, cost in thens
+                ),
+                default=np.inf,
+            )
+            newthens = [
+                (then, cor, cost)
+                for then, cor, cost in thens
+                if cost <= min_change
+            ]
+            ret[ifclause][sg] = (cov, newthens)
+    return ret
