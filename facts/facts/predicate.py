@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Any, Dict
-from enum import Enum
+from typing import List, Dict, Mapping
 import operator
 import functools
 
@@ -8,47 +7,15 @@ import pandas as pd
 from pandas import DataFrame
 from .parameters import ParameterProxy
 
-
-class Operator(Enum):
-    """An enumeration representing comparison operators.
-
-    Attributes:
-        EQ: Represents the equality operator (==).
-        GEQ: Represents the greater than or equal to operator (>=).
-        LEQ: Represents the less than or equal to operator (<=).
-    """
-
-    EQ = "="
-    GEQ = ">="
-    LEQ = "<="
-
-    def eval(self, x, y) -> bool:
-        """
-        Evaluates the comparison operator.
-
-        Args:
-            x: The first operand.
-            y: The second operand.
-
-        Returns:
-            True if the comparison holds; False otherwise.
-        """
-        ops = {
-            Operator.EQ: operator.eq,
-            Operator.GEQ: operator.ge,
-            Operator.LEQ: operator.le,
-        }
-        return ops[self](x, y)
-
+value_t = str | int | float | pd.Interval
 
 @functools.total_ordering
 @dataclass
 class Predicate:
-    """Represents a predicate with features, values, and comparison operators."""
+    """Represents a predicate with features and values."""
 
     features: List[str] = field(default_factory=list)
-    values: List[Any] = field(default_factory=list)
-    operators: List[Operator] = field(default_factory=list, repr=False)
+    values: List[value_t] = field(default_factory=list)
 
     def __eq__(self, __o: object) -> bool:
         """
@@ -64,6 +31,7 @@ class Predicate:
     def __lt__(self, __o: object) -> bool:
         """
         Compares the predicate with another predicate based on their representations.
+        Goal is to induce an arbitrary ordering on predicates.
         """
         return repr(self) < repr(__o)
 
@@ -88,20 +56,16 @@ class Predicate:
             ret.append(f"{f} = {v}")
         return "".join(ret)
 
-    def __post_init__(self, operators=None):
+    def __post_init__(self):
         """
         Initializes the predicate after the data class is created.
         """
-        feats, vals = zip(*sorted(zip(self.features, self.values)))
-        self.features = list(feats)
-        self.values = list(vals)
-        if operators is None:
-            self.operators = [Operator.EQ for _ in range(len(self.features))]
-        else:
-            self.operators = operators
+        pairs = sorted(zip(self.features, self.values))
+        self.features = [f for f, _v in pairs]
+        self.values = [v for _f, v in pairs]
 
     @staticmethod
-    def from_dict(d: Dict[str, str]) -> "Predicate":
+    def from_dict(d: Dict[str, value_t]) -> "Predicate":
         """
         Creates a Predicate instance from a dictionary.
 
@@ -113,10 +77,9 @@ class Predicate:
         """
         feats = list(d.keys())
         vals = list(d.values())
-        ops = [Operator.EQ for _ in range(len(d))]
-        return Predicate(features=feats, values=vals, operators=ops)
+        return Predicate(features=feats, values=vals)
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> Dict[str, value_t]:
         """
         Converts the predicate to a dictionary representation.
 
@@ -125,7 +88,7 @@ class Predicate:
         """
         return dict(zip(self.features, self.values))
 
-    def satisfies(self, x) -> bool:
+    def satisfies(self, x: Mapping[str, str | int | float]) -> bool:
         """
         Checks if the predicate is satisfied by a given input.
 
@@ -135,10 +98,14 @@ class Predicate:
         Returns:
             True if the predicate is satisfied, False otherwise.
         """
-        return all(
-            op.eval(x[feat], val)
-            for feat, val, op in zip(self.features, self.values, self.operators)
-        )
+        for feat, val in zip(self.features, self.values):
+            if isinstance(val, pd.Interval):
+                if x[feat] not in val:
+                    return False
+            else:
+                if x[feat] != val:
+                    return False
+        return True
 
     def width(self):
         """
