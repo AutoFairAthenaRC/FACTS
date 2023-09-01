@@ -16,6 +16,7 @@ class Predicate:
 
     features: List[str] = field(default_factory=list)
     values: List[value_t] = field(default_factory=list)
+    _interval_feats: List[str] = field(default_factory=list)
 
     def __eq__(self, __o: object) -> bool:
         """
@@ -63,6 +64,9 @@ class Predicate:
         pairs = sorted(zip(self.features, self.values))
         self.features = [f for f, _v in pairs]
         self.values = [v for _f, v in pairs]
+        for f, v in pairs:
+            if isinstance(v, pd.Interval):
+                self._interval_feats.append(f)
 
     @staticmethod
     def from_dict(d: Dict[str, value_t]) -> "Predicate":
@@ -99,13 +103,33 @@ class Predicate:
             True if the predicate is satisfied, False otherwise.
         """
         for feat, val in zip(self.features, self.values):
-            if isinstance(val, pd.Interval):
-                if x[feat] not in val:
+            x_val = x[feat]
+            if isinstance(val, pd.Interval) and not isinstance(x_val, str):
+                if x_val not in val:
                     return False
             else:
-                if x[feat] != val:
+                if x_val != val:
                     return False
         return True
+    
+    def satisfies_v(self, X: DataFrame) -> pd.Series[bool]:
+        simple_feats = [feat for feat in self.features if feat not in self._interval_feats]
+        simple_vals = [val for feat, val in zip(self.features, self.values) if feat not in self._interval_feats]
+        interval_feats = [feat for feat in self.features if feat in self._interval_feats]
+
+        X_covered_bool_simple = (X[simple_feats] == simple_vals).all(axis=1)
+
+        # X_c = X[interval_feats]
+        # inters = [self.to_dict()[f] for f in interval_feats]
+        # X_c.apply(lambda x: x, axis="index")
+        X_covered_bool_interval = X_covered_bool_simple.map(lambda x: True)
+        d = self.to_dict()
+        for feat in interval_feats:
+            interval = d[feat]
+            assert isinstance(interval, pd.Interval)
+            indicator = (X[feat] > interval.left) & (X[feat] <= interval.right)
+            X_covered_bool_interval &= indicator
+        return (X_covered_bool_simple & X_covered_bool_interval)
 
     def width(self):
         """
@@ -129,28 +153,6 @@ class Predicate:
         d1 = self.to_dict()
         d2 = other.to_dict()
         return all(feat in d1 and d1[feat] == val for feat, val in d2.items())
-
-
-def featureCostPred(
-    p1: Predicate, p2: Predicate, params: ParameterProxy = ParameterProxy()
-):
-    """
-    Calculates the feature cost between two predicates.
-
-    Args:
-        p1: The first Predicate.
-        p2: The second Predicate.
-        params: The ParameterProxy object containing feature costs.
-
-    Returns:
-        The feature cost between the two predicates.
-    """
-    ret = 0
-    for i, f in enumerate(p1.features):
-        if p1.values[i] != p2.values[i]:
-            ret += params.featureCosts[f]
-    return ret
-
 
 def featureChangePred(
     p1: Predicate, p2: Predicate, params: ParameterProxy = ParameterProxy()
@@ -177,17 +179,6 @@ def featureChangePred(
         total += costChange
     return total
 
-
-# def recIsValid(p1: Predicate, p2: Predicate) -> bool:
-#     n1 = len(p1.features)
-#     n2 = len(p2.features)
-#     if n1 != n2:
-#         return False
-#     featuresMatch = all(map(operator.eq, p1.features, p2.features))
-#     existsChange = any(map(operator.ne, p1.values, p2.values))
-#     return featuresMatch and existsChange
-
-
 def recIsValid(
     p1: Predicate, p2: Predicate, X: DataFrame, drop_infeasible: bool
 ) -> bool:
@@ -203,7 +194,6 @@ def recIsValid(
     Returns:
         True if the pair of predicates is valid, False otherwise.
     """
-    feat_change = True
     n1 = len(p1.features)
     n2 = len(p2.features)
     if n1 != n2:
@@ -212,48 +202,50 @@ def recIsValid(
     featuresMatch = all(map(operator.eq, p1.features, p2.features))
     existsChange = any(map(operator.ne, p1.values, p2.values))
 
+    # accept only those if-then pairs where if and then have the same features
+    # and at least one of them is changed
+    if not (featuresMatch and existsChange):
+        return False
+
+    # reject recourses that involve - and change - all features.
     if n1 == len(X.columns) and all(map(operator.ne, p1.values, p2.values)):
         return False
 
     if drop_infeasible == True:
-        if all(map(operator.eq, p1.features, p2.features)) and any(
-            map(operator.ne, p1.values, p2.values)
-        ):
-            for count, feat in enumerate(p1.features):
-                if p1.values[count] != "Unknown" and p2.values[count] == "Unknown":
-                    return False
-                if isinstance(p1.values[count], pd.Interval):
-                    if isinstance(p2.values[count], pd.Interval):
-                        if p1.values[count].overlaps(p2.values[count]):
-                            return False
-                    else:
-                        raise ValueError("Cannot have interval for an if and not interval for then")
-                if feat == "parents":
-                    parents_change = p1.values[count] <= p2.values[count]
-                    feat_change = feat_change and parents_change
-                if feat == "age":
-                    age_change = p1.values[count].left <= p2.values[count].left
-                    feat_change = feat_change and age_change
-                elif feat == "ages":
-                    age_change = p1.values[count] <= p2.values[count]
-                    feat_change = feat_change and age_change
-                elif feat == "education-num":
-                    edu_change = p1.values[count] <= p2.values[count]
-                    feat_change = feat_change and edu_change
-                elif feat == "PREDICTOR RAT AGE AT LATEST ARREST":
-                    age_change = p1.values[count] <= p2.values[count]
-                    feat_change = feat_change and age_change
-                elif feat == "age_cat":
-                    age_change = p1.values[count] <= p2.values[count]
-                    feat_change = feat_change and age_change
-                elif feat == "sex":
-                    race_change = p1.values[count] == p2.values[count]
-                    feat_change = feat_change and race_change
-            return feat_change
-        else:
-            return False
-    else:
-        return featuresMatch and existsChange
+        feat_change = True
+        for count, feat in enumerate(p1.features):
+            if p1.values[count] != "Unknown" and p2.values[count] == "Unknown":
+                return False
+            if isinstance(p1.values[count], pd.Interval):
+                if isinstance(p2.values[count], pd.Interval):
+                    if p1.values[count].overlaps(p2.values[count]):
+                        return False
+                else:
+                    raise ValueError("Cannot have interval for an if and not interval for then")
+            if feat == "parents":
+                parents_change = p1.values[count] <= p2.values[count]
+                feat_change = feat_change and parents_change
+            if feat == "age":
+                age_change = p1.values[count].left <= p2.values[count].left
+                feat_change = feat_change and age_change
+            elif feat == "ages":
+                age_change = p1.values[count] <= p2.values[count]
+                feat_change = feat_change and age_change
+            elif feat == "education-num":
+                edu_change = p1.values[count] <= p2.values[count]
+                feat_change = feat_change and edu_change
+            elif feat == "PREDICTOR RAT AGE AT LATEST ARREST":
+                age_change = p1.values[count] <= p2.values[count]
+                feat_change = feat_change and age_change
+            elif feat == "age_cat":
+                age_change = p1.values[count] <= p2.values[count]
+                feat_change = feat_change and age_change
+            elif feat == "sex":
+                race_change = p1.values[count] == p2.values[count]
+                feat_change = feat_change and race_change
+        return feat_change
+    
+    return True
 
 
 def drop_two_above(p1: Predicate, p2: Predicate, l: list) -> bool:
