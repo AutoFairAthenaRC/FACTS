@@ -34,6 +34,7 @@ def incorrectRecoursesIfThen_bins(ifclause: Predicate, thenclause: Predicate, X_
         assert isinstance(interval, pd.Interval)
         indicator = (X_aff[feat] > interval.left) & (X_aff[feat] <= interval.right)
         X_aff_covered_bool_numeric &= indicator
+    assert (ifclause.satisfies_v(X_aff) == X_aff_covered_bool_nonnumeric & X_aff_covered_bool_numeric).all()
     X_aff_covered = X_aff[X_aff_covered_bool_nonnumeric & X_aff_covered_bool_numeric].copy()
 
     if X_aff_covered.shape[0] == 0:
@@ -55,7 +56,9 @@ def incorrectRecoursesIfThen_bins(ifclause: Predicate, thenclause: Predicate, X_
         assert isinstance(then_interval, pd.Interval)
 
         slope = (then_interval.right - then_interval.left) / (if_interval.right - if_interval.left)
-        lin_map = lambda x: slope * (x - if_interval.left) + then_interval.left
+        x0 = if_interval.left
+        y0 = then_interval.left
+        lin_map = lambda x: slope * (x - x0) + y0
 
         X_aff_covered[feat] = lin_map(X_aff_covered[feat])
 
@@ -79,16 +82,6 @@ def if_group_cost_min_change_correctness_threshold(
     return ret
 
 def if_group_cost_recoursescount_correctness_threshold(
-    ifclause: Predicate,
-    thenclauses: List[Tuple[Predicate, float, float]],
-    cor_thres: float = 0.5
-) -> float:
-    feature_changes = np.array([
-        cost for thenclause, cor, cost in thenclauses if cor >= cor_thres
-        ])
-    return -feature_changes.size
-
-def if_group_cost_recoursescount_correctness_threshold_bins(
     ifclause: Predicate,
     thenclauses: List[Tuple[Predicate, float, float]],
     cor_thres: float = 0.5
