@@ -10,23 +10,23 @@ from .parameters import ParameterProxy
 from .predicate import Predicate
 from .models import ModelAPI
 from .metrics import (
-    if_group_cost_recoursescount_correctness_threshold_bins,
-    if_group_total_correctness,
-    if_group_cost_min_change_correctness_cumulative_threshold,
-    if_group_cost_change_cumulative_threshold,
+    if_group_cost_min_change_correctness_threshold,
+    if_group_cost_recoursescount_correctness_threshold,
+    if_group_maximum_correctness,
+    if_group_cost_max_correctness_cost_budget,
     if_group_average_recourse_cost_conditional,
-    calculate_all_if_subgroup_costs_cumulative
+    calculate_all_if_subgroup_costs
 )
 from .optimization import (
-    sort_triples_by_max_costdiff_generic_cumulative
+    sort_triples_by_max_costdiff
 )
 from .rule_filters import (
-    filter_contained_rules_keep_max_bias_cumulative,
-    filter_by_correctness_cumulative,
-    filter_by_cost_cumulative,
+    remove_rules_below_correctness_threshold,
     keep_cheapest_rules_above_cumulative_correctness_threshold,
+    remove_rules_above_cost_budget,
+    filter_contained_rules_keep_max_bias,
     keep_only_minimum_change_bins,
-    delete_fair_rules_cumulative
+    delete_fair_rules
 )
 
 def add_cost_to_rules(
@@ -91,7 +91,9 @@ def move_to_counterfactuals(X: DataFrame, ifclause: Predicate, thenclause: Predi
         assert isinstance(then_interval, pd.Interval)
 
         slope = (then_interval.right - then_interval.left) / (if_interval.right - if_interval.left)
-        lin_map = lambda x: slope * (x - if_interval.left) + then_interval.left
+        x0 = if_interval.left
+        y0 = then_interval.left
+        lin_map = lambda x: slope * (x - x0) + y0
 
         X[feat] = lin_map(X[feat])
 
@@ -137,38 +139,35 @@ def select_rules_subset_bins(
 ]:
     # step 1: sort according to metric
     metrics: Dict[
-        str, Callable[[Predicate, List[Tuple[Predicate, float, float]], ParameterProxy], float]
+        str, Callable[[Predicate, List[Tuple[Predicate, float, float]]], float]
     ] = {
-        "min-above-thr": functools.partial(
-            if_group_cost_min_change_correctness_cumulative_threshold, cor_thres=cor_threshold
+        "min-above-corr": functools.partial(
+            if_group_cost_min_change_correctness_threshold, cor_thres=cor_threshold
         ),
         "num-above-thr": functools.partial(
-            if_group_cost_recoursescount_correctness_threshold_bins, cor_thres=cor_threshold
+            if_group_cost_recoursescount_correctness_threshold, cor_thres=cor_threshold
         ),
-        "total-correctness": if_group_total_correctness,
-        "min-above-corr": functools.partial(
-            if_group_cost_min_change_correctness_cumulative_threshold, cor_thres=cor_threshold
-        ),
+        "total-correctness": if_group_maximum_correctness,
         "max-upto-cost": functools.partial(
-            if_group_cost_change_cumulative_threshold, cost_thres=cost_threshold
+            if_group_cost_max_correctness_cost_budget, cost_thres=cost_threshold
         ),
         "fairness-of-mean-recourse-conditional": if_group_average_recourse_cost_conditional
     }
     sorting_functions = {
-        "generic-sorting": functools.partial(
-            sort_triples_by_max_costdiff_generic_cumulative,
+        "max-cost-diff-decr": functools.partial(
+            sort_triples_by_max_costdiff,
             ignore_nans=False,
             ignore_infs=False,
             secondary_objectives=secondary_sorting_objectives,
         ),
-        "generic-sorting-ignore-forall-subgroups-empty": functools.partial(
-            sort_triples_by_max_costdiff_generic_cumulative,
+        "max-cost-diff-decr-ignore-forall-subgroups-empty": functools.partial(
+            sort_triples_by_max_costdiff,
             ignore_nans=True,
             ignore_infs=False,
             secondary_objectives=secondary_sorting_objectives,
         ),
-        "generic-sorting-ignore-exists-subgroup-empty": functools.partial(
-            sort_triples_by_max_costdiff_generic_cumulative,
+        "max-cost-diff-decr-ignore-exists-subgroup-empty": functools.partial(
+            sort_triples_by_max_costdiff,
             ignore_nans=True,
             ignore_infs=True,
             secondary_objectives=secondary_sorting_objectives,
@@ -182,11 +181,10 @@ def select_rules_subset_bins(
     top_rules = dict(rules_sorted[:top_count])
 
     # keep also the aggregate costs of the then-blocks of the top rules
-    costs = calculate_all_if_subgroup_costs_cumulative(
+    costs = calculate_all_if_subgroup_costs(
         list(rulesbyif.keys()),
         list(rulesbyif.values()),
         group_calculator=metric_fn,
-        params=params,
     )
 
     # step 3 (optional): filtering
@@ -198,15 +196,15 @@ def select_rules_subset_bins(
         ],
     ] = {
         "remove-contained": functools.partial(
-            filter_contained_rules_keep_max_bias_cumulative, subgroup_costs=costs
+            filter_contained_rules_keep_max_bias, subgroup_costs=costs
         ),
         "remove-below-thr": functools.partial(
-            filter_by_correctness_cumulative, threshold=cor_threshold
+            remove_rules_below_correctness_threshold, threshold=cor_threshold
         ),
-        "remove-fair-rules": functools.partial(delete_fair_rules_cumulative, subgroup_costs=costs),
+        "remove-fair-rules": functools.partial(delete_fair_rules, subgroup_costs=costs),
         "keep-only-min-change": keep_only_minimum_change_bins,
         "remove-above-thr-cost": functools.partial(
-            filter_by_cost_cumulative, threshold=cost_threshold
+            remove_rules_above_cost_budget, threshold=cost_threshold
         ),
         "keep-cheap-rules-above-thr-cor": functools.partial(
             keep_cheapest_rules_above_cumulative_correctness_threshold, threshold=cor_threshold
