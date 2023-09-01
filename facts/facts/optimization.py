@@ -5,7 +5,7 @@ from typing import List, Set, Tuple, Dict
 import numpy as np
 from pandas import DataFrame
 
-from .predicate import Predicate, featureChangePred, featureCostPred, recIsValid
+from .predicate import Predicate, featureChangePred, recIsValid
 from .models import ModelAPI
 from .metrics import (
     max_intergroup_cost_diff,

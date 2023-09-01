@@ -233,7 +233,7 @@ def valid_ifthens_with_coverage_correctness(
     }
     lens = {sg: len(rls[0]) for sg, rls in RLs_and_supports.items()}
     print(f"Number of frequent itemsets for affected: {lens}", flush=True)
-    rest_ret = {"freq-itemsets-no": lens}
+    rest_ret: Dict[str, Any] = {"freq-itemsets-no": lens}
 
     # intersection of frequent itemsets of all sensitive subgroups
     print(
