@@ -3,6 +3,18 @@ from pandas import DataFrame
 import numpy as np
 
 def clean_adult(X: DataFrame) -> DataFrame:
+    """Cleans the `Adult` dataset. Specifically, drops the columns `fnlwgt`
+    and `education`, removes rows with missing values, discretizes numeric
+    features and binarizes labels.
+
+    Args:
+        X (DataFrame): input DataFrame. Assumed to contain the Adult dataset
+            as can be found at https://raw.githubusercontent.com/columbia/fairtest/master/data/adult/adult.csv
+            at the time of writing.
+
+    Returns:
+        DataFrame: the preprocessed DataFrame
+    """
     X = X.drop(columns=["fnlwgt", "education"])
     cols = list(X.columns)
     X[cols] = X[cols].replace([" ?"], np.nan)
@@ -19,6 +31,17 @@ def clean_adult(X: DataFrame) -> DataFrame:
     return X
 
 def clean_ssl(X: DataFrame) -> DataFrame:
+    """Cleans the `Subject List Dataset (SSL)` dataset. Specifically, binarizes
+    the predictions, removes irrelevant values, and discretizes numeric features.
+
+    Args:
+        X (DataFrame): input DataFrame. Assumed to contain the SSL dataset
+            as can be found at https://raw.githubusercontent.com/samuel-yeom/fliptest/master/exact-ot/chicago-ssl-clean.csv
+            (at the time of writing)
+
+    Returns:
+        DataFrame: the preprocessed DataFrame
+    """
     X["SSL SCORE"] = np.where((X["SSL SCORE"] >= 345), 0, 1)
     X = X.replace("WBH", "BLK")
     X = X.replace("WWH", "WHI")
@@ -36,6 +59,17 @@ def clean_ssl(X: DataFrame) -> DataFrame:
     return X
 
 def clean_compas(X: DataFrame) -> DataFrame:
+    """Cleans the `COMPAS / ProPublica Recidivism` dataset. Specifically, drops
+    the columns `age` and `c_charge_desc`, maps labels to 0-1 and discretizes
+    continuous features
+
+    Args:
+        X (DataFrame): input DataFrame with the COMPAS dataset. Assumed to be
+            the dataframe returned by the function `aif360.sklearn.datasets.fetch_compas`.
+
+    Returns:
+        DataFrame: the preprocessed DataFrame
+    """
     X = X.reset_index(drop=True)
     X = X.drop(columns=["age", "c_charge_desc"])
     X["priors_count"] = pd.cut(X["priors_count"], [-0.1, 1, 5, 10, 15, 38])
