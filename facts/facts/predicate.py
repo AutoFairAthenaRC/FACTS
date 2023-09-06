@@ -7,7 +7,7 @@ import pandas as pd
 from pandas import DataFrame
 from .parameters import ParameterProxy
 
-value_t = str | int | float | pd.Interval
+value_t = str | float | pd.Interval
 
 @functools.total_ordering
 @dataclass
