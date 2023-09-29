@@ -112,7 +112,7 @@ class Predicate:
                     return False
         return True
     
-    def satisfies_v(self, X: DataFrame) -> pd.Series[bool]:
+    def satisfies_v(self, X: DataFrame) -> pd.Series:
         simple_feats = [feat for feat in self.features if feat not in self._interval_feats]
         simple_vals = [val for feat, val in zip(self.features, self.values) if feat not in self._interval_feats]
         interval_feats = [feat for feat in self.features if feat in self._interval_feats]

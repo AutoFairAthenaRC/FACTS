@@ -6,7 +6,6 @@ from .parameters import ParameterProxy
 from .predicate import Predicate, featureChangePred
 
 
-# same for metrics definitions of the "micro" viewpoint
 def remove_rules_below_correctness_threshold(
     rulesbyif: Dict[
         Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]

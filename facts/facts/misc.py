@@ -493,7 +493,7 @@ def rulesbyif2rules(
 def select_rules_subset(
     rulesbyif: Dict[Predicate, Dict[str, Tuple[float, List[Tuple[Predicate, float, float]]]]],
     metric: str = "total-correctness",
-    sort_strategy: str = "abs-diff-decr",
+    sort_strategy: str = "max-cost-diff-decr",
     top_count: int = 10,
     filter_sequence: List[str] = [],
     cor_threshold: float = 0.5,
@@ -562,7 +562,7 @@ def select_rules_subset(
         "remove-contained": functools.partial(
             filter_contained_rules_keep_max_bias, subgroup_costs=costs
         ),
-        "remove-below-thr": functools.partial(
+        "remove-below-thr-corr": functools.partial(
             remove_rules_below_correctness_threshold, threshold=cor_threshold
         ),
         "remove-above-thr-cost": functools.partial(
