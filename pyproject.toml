@@ -1,5 +1,0 @@
-[tool.pytest.ini_options]
-filterwarnings = [
-    # note the use of single quote below to denote "raw" strings in TOML
-    'ignore:.*pkg_resources.*:DeprecationWarning',
-]
