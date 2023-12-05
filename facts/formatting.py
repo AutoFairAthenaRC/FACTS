@@ -414,6 +414,6 @@ def plot_aggregate_correctness(
         lines.append(line)
         labels.append(sg)
     ax.set_xlabel("Cost of change")
-    ax.set_ylabel("Correctness percentage")
+    ax.set_ylabel("Effectiveness  percentage")
     ax.legend(lines, labels)
     return fig
